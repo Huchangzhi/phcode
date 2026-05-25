@@ -592,7 +592,10 @@ require(['vs/editor/editor.main'], function() {
             localityBonus: false,
             // 根据设置启用或禁用建议
             snippetsPrevented: !cppAutocompleteEnabled
-        }
+        },
+        // 与 VSCode 一致的光标设置
+        cursorBlinking: 'blink',
+        cursorSmoothCaretAnimation: 'on'
     });
 
     // 初始化 Monaco 主题（此时 monacoEditor 已定义）
@@ -1780,7 +1783,9 @@ function initPluginSettings() {
                     suggest: {
                         localityBonus: false,
                         snippetsPrevented: !cppAutocompleteEnabled
-                    }
+                    },
+                    cursorBlinking: 'blink',
+                    cursorSmoothCaretAnimation: 'on'
                 });
 
                 // 恢复光标位置
