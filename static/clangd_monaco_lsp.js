@@ -243,7 +243,19 @@ class MonacoClangdLSP {
                         }
                     },
                     hover: { contentFormat: ['plaintext', 'markdown'] },
-                    signatureHelp: { signatureInformation: { documentationFormat: ['plaintext'] } }
+                    signatureHelp: { signatureInformation: { documentationFormat: ['plaintext'] } },
+                    definition: {},
+                    codeAction: {
+                        codeActionLiteralSupport: {
+                            codeActionKind: {
+                                valueSet: ['quickfix', 'refactor', 'refactor.extract', 'refactor.inline', 'refactor.rewrite', 'source']
+                            }
+                        },
+                        isPreferredSupport: true
+                    },
+                    formatting: {
+                        dynamicRegistration: false
+                    }
                 }
             }
         };
@@ -267,6 +279,9 @@ class MonacoClangdLSP {
         this.registerHoverProvider();
         this.registerSignatureHelpProvider();
         this.registerSemanticTokensProvider();
+        this.registerDefinitionProvider();
+        this.registerCodeActionProvider();
+        this.registerFormattingProvider();
 
         console.log('[MonacoClangd] Custom LSP initialization completed');
     }
@@ -328,45 +343,7 @@ class MonacoClangdLSP {
                 }
             });
 
-            // 文档变化后，触发语义高亮刷新
-            this.triggerSemanticRefresh();
         });
-
-        // 定期发送文档以获取诊断
-        setInterval(() => {
-            if (!this.initialized || !this.clangdWorker) return;
-
-            const model = this.editor.getModel();
-            if (!model) return;
-
-            this.sendToWorker({
-                jsonrpc: '2.0',
-                method: 'textDocument/didOpen',
-                params: {
-                    textDocument: {
-                        uri: this.documentUri,
-                        languageId: 'cpp',
-                        version: ++this.documentVersion,
-                        text: model.getValue()
-                    }
-                }
-            });
-
-            // 定期触发语义高亮刷新
-            this.triggerSemanticRefresh();
-        }, 5000);
-
-        // 初始化完成后触发一次语义高亮
-        setTimeout(() => this.triggerSemanticRefresh(), 1000);
-    }
-
-    // 触发语义高亮刷新
-    triggerSemanticRefresh() {
-        if (!this.editor || !monaco) return;
-        
-        // Monaco 会自动管理语义 tokens 的刷新
-        // 不需要手动触发
-        console.log('[MonacoClangd] Semantic refresh triggered');
     }
 
     async sendRequest(method, params) {
@@ -383,24 +360,22 @@ class MonacoClangdLSP {
             this.pendingRequests.set(id, pendingRequest);
 
             this.sendToWorker(request);
-            console.log(`[MonacoClangd] Sent request: ${method} (id=${id})`);
 
-            // 超时处理 - 60 秒
+            const ttl = method === 'initialize' ? 30000 : 15000;
             const timeout = setTimeout(() => {
                 const pending = this.pendingRequests.get(id);
                 if (pending) {
                     this.pendingRequests.delete(id);
-                    console.error(`[MonacoClangd] Request timeout after 60s: ${method} (id=${id})`);
+                    console.warn(`[MonacoClangd] Request timeout: ${method} (id=${id})`);
                     pending.resolve(null);
                 }
-            }, 60000);
+            }, ttl);
 
             pendingRequest.timeout = timeout;
         });
     }
 
     handleLSPMessage(message) {
-        console.log('[MonacoClangd] Received LSP message:', JSON.stringify(message).substring(0, 200));
 
         if (message.id !== undefined) {
             // 响应消息
@@ -412,7 +387,6 @@ class MonacoClangdLSP {
                     console.warn('[MonacoClangd] LSP error:', message.error);
                     pending.resolve(null);
                 } else {
-                    console.log(`[MonacoClangd] Request resolved: id=${message.id}`);
                     pending.resolve(message.result);
                 }
             } else {
@@ -485,7 +459,7 @@ class MonacoClangdLSP {
                     const items = await this.requestCompletion(model, position);
                     return {
                         suggestions: items,
-                        incomplete: true  // 允许后续请求
+                        incomplete: false
                     };
                 } catch (error) {
                     console.warn('[MonacoClangd] Completion error:', error);
@@ -902,15 +876,12 @@ class MonacoClangdLSP {
             },
 
             provideDocumentSemanticTokens: async (model, lastResultId, token) => {
-                console.log('[MonacoClangd] Semantic tokens requested');
                 if (!this.initialized || !this.clangdWorker) {
-                    console.log('[MonacoClangd] Semantic tokens: not ready');
                     return null;
                 }
 
                 try {
                     const result = await this.requestSemanticTokens(model, token);
-                    console.log('[MonacoClangd] Semantic tokens result:', result);
                     return result;
                 } catch (error) {
                     console.warn('[MonacoClangd] Semantic tokens error:', error);
@@ -956,18 +927,13 @@ class MonacoClangdLSP {
             partialResultToken: null
         };
 
-        console.log('[MonacoClangd] Requesting semantic tokens from clangd...');
         const result = await this.sendRequest('textDocument/semanticTokens/full', params);
-        console.log('[MonacoClangd] Semantic tokens result from clangd:', result);
-        
+
         if (!result || !result.data) {
-            console.log('[MonacoClangd] No semantic tokens data returned');
             return null;
         }
 
-        // 转换 LSP 语义 tokens 到 Monaco 格式
         const converted = this.convertSemanticTokens(result.data);
-        console.log('[MonacoClangd] Converted semantic tokens:', converted.data.length);
         return converted;
     }
 
@@ -987,6 +953,262 @@ class MonacoClangdLSP {
         if (this.semanticTokensProvider) {
             this.semanticTokensProvider.dispose();
             this.semanticTokensProvider = null;
+        }
+    }
+
+    // 注册跳转定义提供器
+    registerDefinitionProvider() {
+        if (!monaco) return;
+
+        const provider = monaco.languages.registerDefinitionProvider('cpp', {
+            provideDefinition: async (model, position, token) => {
+                if (!this.initialized || !this.clangdWorker) return null;
+
+                try {
+                    const result = await this.requestDefinition(model, position);
+                    return result;
+                } catch (error) {
+                    console.warn('[MonacoClangd] Definition error:', error);
+                    return null;
+                }
+            }
+        });
+
+        this.definitionProvider = provider;
+        console.log('[MonacoClangd] Definition provider registered');
+    }
+
+    async requestDefinition(model, position) {
+        const params = {
+            textDocument: { uri: this.documentUri },
+            position: { line: position.lineNumber - 1, character: position.column - 1 }
+        };
+
+        const result = await this.sendRequest('textDocument/definition', params);
+        if (!result) return null;
+
+        const items = Array.isArray(result) ? result : [result];
+        const locations = [];
+        const modelUri = model.uri;
+
+        for (const item of items) {
+            let uriStr, range;
+            if (item.uri) {
+                uriStr = item.uri;
+                range = item.range;
+            } else if (item.targetUri) {
+                uriStr = item.targetUri;
+                range = item.targetRange;
+            } else {
+                continue;
+            }
+
+            // 如果指向本文件，用编辑器实际的 model URI，否则 Monaco 找不到 model
+            const targetUri = uriStr === this.documentUri ? modelUri : monaco.Uri.parse(uriStr);
+
+            locations.push({
+                uri: targetUri,
+                range: new monaco.Range(
+                    range.start.line + 1,
+                    range.start.character + 1,
+                    range.end.line + 1,
+                    range.end.character + 1
+                )
+            });
+        }
+
+        return locations.length > 0 ? locations : null;
+    }
+
+    disposeDefinitionProvider() {
+        if (this.definitionProvider) {
+            this.definitionProvider.dispose();
+            this.definitionProvider = null;
+        }
+    }
+
+    // 注册代码操作提供器（自动修复、重构等）
+    registerCodeActionProvider() {
+        if (!monaco) return;
+
+        const provider = monaco.languages.registerCodeActionProvider('cpp', {
+            provideCodeActions: async (model, range, context, token) => {
+                if (!this.initialized || !this.clangdWorker) return null;
+
+                try {
+                    const result = await this.requestCodeAction(model, range, context);
+                    return result;
+                } catch (error) {
+                    console.warn('[MonacoClangd] CodeAction error:', error);
+                    return null;
+                }
+            }
+        });
+
+        this.codeActionProvider = provider;
+        console.log('[MonacoClangd] CodeAction provider registered');
+    }
+
+    async requestCodeAction(model, range, context) {
+        const params = {
+            textDocument: { uri: this.documentUri },
+            range: {
+                start: { line: range.startLineNumber - 1, character: range.startColumn - 1 },
+                end: { line: range.endLineNumber - 1, character: range.endColumn - 1 }
+            },
+            context: {
+                diagnostics: context.markers.map(m => ({
+                    range: {
+                        start: { line: m.startLineNumber - 1, character: m.startColumn - 1 },
+                        end: { line: m.endLineNumber - 1, character: m.endColumn - 1 }
+                    },
+                    severity: m.severity === monaco.MarkerSeverity.Error ? 1 :
+                             m.severity === monaco.MarkerSeverity.Warning ? 2 : 3,
+                    message: m.message,
+                    source: m.source
+                })),
+                only: context.only
+            }
+        };
+
+        const result = await this.sendRequest('textDocument/codeAction', params);
+        if (!result || !Array.isArray(result)) return null;
+
+        const actions = result
+            .filter(a => a.title)
+            .map(a => this.convertCodeAction(a));
+
+        return { actions, dispose: () => {} };
+    }
+
+    convertCodeAction(action) {
+        const monacoAction = {
+            title: action.title,
+            diagnostics: action.diagnostics ? action.diagnostics.map(d => ({
+                severity: d.severity === 1 ? monaco.MarkerSeverity.Error :
+                         d.severity === 2 ? monaco.MarkerSeverity.Warning :
+                         monaco.MarkerSeverity.Info,
+                startLineNumber: d.range.start.line + 1,
+                startColumn: d.range.start.character + 1,
+                endLineNumber: d.range.end.line + 1,
+                endColumn: d.range.end.character + 1,
+                message: d.message
+            })) : undefined,
+            kind: action.kind,
+            isPreferred: action.isPreferred
+        };
+
+        if (action.edit) {
+            monacoAction.edit = this.convertWorkspaceEdit(action.edit);
+        }
+
+        return monacoAction;
+    }
+
+    convertWorkspaceEdit(lspEdit) {
+        const model = this.editor?.getModel();
+        if (!model) return { edits: [] };
+
+        const edits = [];
+        const modelUri = model.uri;
+
+        if (lspEdit.documentChanges) {
+            for (const change of lspEdit.documentChanges) {
+                for (const e of change.edits) {
+                    edits.push({
+                        resource: modelUri,
+                        textEdit: {
+                            range: new monaco.Range(
+                                e.range.start.line + 1,
+                                e.range.start.character + 1,
+                                e.range.end.line + 1,
+                                e.range.end.character + 1
+                            ),
+                            text: e.newText
+                        }
+                    });
+                }
+            }
+        }
+
+        if (lspEdit.changes) {
+            for (const textEdits of Object.values(lspEdit.changes)) {
+                for (const e of textEdits) {
+                    edits.push({
+                        resource: modelUri,
+                        textEdit: {
+                            range: new monaco.Range(
+                                e.range.start.line + 1,
+                                e.range.start.character + 1,
+                                e.range.end.line + 1,
+                                e.range.end.character + 1
+                            ),
+                            text: e.newText
+                        }
+                    });
+                }
+            }
+        }
+
+        return { edits };
+    }
+
+    disposeCodeActionProvider() {
+        if (this.codeActionProvider) {
+            this.codeActionProvider.dispose();
+            this.codeActionProvider = null;
+        }
+    }
+
+    // 注册格式化提供器
+    registerFormattingProvider() {
+        if (!monaco) return;
+
+        const provider = monaco.languages.registerDocumentFormattingEditProvider('cpp', {
+            provideDocumentFormattingEdits: async (model, options, token) => {
+                if (!this.initialized || !this.clangdWorker) return [];
+
+                try {
+                    const result = await this.requestFormatting(model, options);
+                    return result || [];
+                } catch (error) {
+                    console.warn('[MonacoClangd] Formatting error:', error);
+                    return [];
+                }
+            }
+        });
+
+        this.formattingProvider = provider;
+        console.log('[MonacoClangd] Formatting provider registered');
+    }
+
+    async requestFormatting(model, options) {
+        const params = {
+            textDocument: { uri: this.documentUri },
+            options: {
+                tabSize: options.tabSize,
+                insertSpaces: options.insertSpaces
+            }
+        };
+
+        const result = await this.sendRequest('textDocument/formatting', params);
+        if (!result || !Array.isArray(result)) return null;
+
+        return result.map(edit => ({
+            range: new monaco.Range(
+                edit.range.start.line + 1,
+                edit.range.start.character + 1,
+                edit.range.end.line + 1,
+                edit.range.end.character + 1
+            ),
+            text: edit.newText
+        }));
+    }
+
+    disposeFormattingProvider() {
+        if (this.formattingProvider) {
+            this.formattingProvider.dispose();
+            this.formattingProvider = null;
         }
     }
 
@@ -1025,6 +1247,15 @@ class MonacoClangdLSP {
 
         // 清理语义高亮提供器
         this.disposeSemanticTokensProvider();
+
+        // 清理跳转定义提供器
+        this.disposeDefinitionProvider();
+
+        // 清理代码操作提供器
+        this.disposeCodeActionProvider();
+
+        // 清理格式化提供器
+        this.disposeFormattingProvider();
 
         // 清理 worker
         if (this.clangdWorker) {
@@ -1113,20 +1344,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 lspInstance.disposeSignatureHelpProvider();
                 lspInstance.disposeSemanticTokensProvider();
 
-                // 清理定时器
-                if (lspInstance.semanticRefreshTimer) {
-                    clearTimeout(lspInstance.semanticRefreshTimer);
-                    lspInstance.semanticRefreshTimer = null;
-                }
-                if (lspInstance.documentSyncInterval) {
-                    clearInterval(lspInstance.documentSyncInterval);
-                    lspInstance.documentSyncInterval = null;
-                }
-                if (lspInstance.initTimeout) {
-                    clearTimeout(lspInstance.initTimeout);
-                    lspInstance.initTimeout = null;
-                }
-
                 // 清理 worker
                 if (lspInstance.clangdWorker) {
                     lspInstance.clangdWorker.terminate();
@@ -1168,9 +1385,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.log('[MonacoClangd] Restart successful!');
             } catch (error) {
                 console.error('[MonacoClangd] Restart failed:', error);
-                if (statusElement) {
-                    statusElement.textContent = '✗ clangd 重启失败';
-                }
                 restartBtn.style.display = 'inline-block';
             }
         });

@@ -1,49 +1,67 @@
 // clangd-monaco-worker.js - 用于 Monaco 内置 LSP 客户端的 clangd Worker
 // 使用 JSON-RPC 消息格式与 Monaco 通信
+//
+// stdout 解析使用上游 clangd-in-browser 的 JsonStream 状态机方案，
+// 避免原实现 O(n²) 的逐字节缓冲拷贝和 Content-Length 头搜索。
 
 console.log('[clangd-monaco-worker] Starting...');
 
-// 导入 clangd.js
 import ClangdModule from '/static/clangd/clangd.js';
 
 console.log('[clangd-monaco-worker] ClangdModule imported:', typeof ClangdModule);
 
-// JSON-RPC 消息处理
-class JSONRPCProtocol {
-    constructor() {
-        this.requestId = 0;
-        this.pendingRequests = new Map();
-    }
+// ---- JsonStream: 从上游 clangd-in-browser 移植 ----
+// 基于 {} 嵌套深度的状态机，直接识别完整 JSON 对象，
+// 无需 Content-Length 头解析和逐字节缓冲拷贝。
+const QUOT = 34, LBRACE = 123, RBRACE = 125, BACKSLASH = 92;
 
-    // 发送 JSON-RPC 请求
-    createRequest(method, params) {
-        const id = ++this.requestId;
-        return {
-            jsonrpc: '2.0',
-            id,
-            method,
-            params
-        };
-    }
+class JsonStream {
+    #inJson = false;
+    #rawText = [];
+    #unbalancedBraces = 0;
+    #inString = false;
+    #inEscape = 0;
+    #textDecoder = new TextDecoder();
 
-    // 发送通知（不需要响应）
-    createNotification(method, params) {
-        return {
-            jsonrpc: '2.0',
-            method,
-            params
-        };
+    insert(charCode) {
+        if (!this.#inJson && charCode === LBRACE) {
+            this.#inJson = true;
+            this.#rawText = [];
+        }
+        if (!this.#inJson) return null;
+
+        this.#rawText.push(charCode);
+
+        if (this.#inString) {
+            if (this.#inEscape) {
+                if (charCode === 75) this.#inEscape += 4;
+                this.#inEscape--;
+            } else {
+                if (charCode === BACKSLASH) this.#inEscape = 1;
+                else if (charCode === QUOT) this.#inString = false;
+            }
+        } else {
+            if (charCode === LBRACE) this.#unbalancedBraces++;
+            else if (charCode === RBRACE) {
+                this.#unbalancedBraces--;
+                if (this.#unbalancedBraces === 0) {
+                    this.#inJson = false;
+                    return this.#textDecoder.decode(new Uint8Array(this.#rawText));
+                }
+            } else if (charCode === QUOT) this.#inString = true;
+        }
+        return null;
     }
 }
 
-const protocol = new JSONRPCProtocol();
-let clangdInstance = null;
+const jsonStream = new JsonStream();
+// ---- end JsonStream ----
+
 let stdinChunks = [];
 let currentStdinChunk = [];
 const textEncoder = new TextEncoder();
 let resolveStdinReady = () => {};
 
-// stdin 实现
 const stdin = () => {
     if (currentStdinChunk.length === 0) {
         if (stdinChunks.length === 0) {
@@ -63,77 +81,21 @@ const stdinReady = async () => {
     }
 };
 
-// stdout 实现 - 发送到 clangd
-// 使用字节缓冲区正确处理 UTF-8 编码的 JSON-RPC 消息
-const stdoutBuffer = {
-    buffer: new Uint8Array(0),
-    textDecoder: new TextDecoder('utf-8')
-};
-
+// stdout: 使用 JsonStream 状态机，O(n)，无冗余拷贝
 const stdout = (charCode) => {
-    // 将新字节添加到缓冲区
-    const newBuffer = new Uint8Array(stdoutBuffer.buffer.length + 1);
-    newBuffer.set(stdoutBuffer.buffer);
-    newBuffer[stdoutBuffer.buffer.length] = charCode;
-    stdoutBuffer.buffer = newBuffer;
-
-    // 尝试解析完整的 JSON-RPC 消息
-    while (true) {
-        // 在缓冲区中查找头结束标记
-        const headerEndPattern = new Uint8Array([13, 10, 13, 10]); // \r\n\r\n
-        let headerEndIndex = -1;
-        
-        for (let i = 0; i <= stdoutBuffer.buffer.length - 4; i++) {
-            if (stdoutBuffer.buffer[i] === 13 && 
-                stdoutBuffer.buffer[i + 1] === 10 && 
-                stdoutBuffer.buffer[i + 2] === 13 && 
-                stdoutBuffer.buffer[i + 3] === 10) {
-                headerEndIndex = i;
-                break;
-            }
-        }
-        
-        if (headerEndIndex === -1) break;
-
-        // 解析头部
-        const headerBytes = stdoutBuffer.buffer.subarray(0, headerEndIndex);
-        const headerText = stdoutBuffer.textDecoder.decode(headerBytes);
-        const lengthMatch = headerText.match(/Content-Length: (\d+)/);
-        
-        if (!lengthMatch) {
-            // 跳过无效的头部
-            stdoutBuffer.buffer = stdoutBuffer.buffer.subarray(headerEndIndex + 4);
-            continue;
-        }
-
-        const contentLength = parseInt(lengthMatch[1]);
-        const contentStart = headerEndIndex + 4;
-        const contentEnd = contentStart + contentLength;
-
-        // 检查是否有足够的数据
-        if (stdoutBuffer.buffer.length < contentEnd) break;
-
-        // 使用 TextDecoder 正确解码 UTF-8 内容
-        const contentBytes = stdoutBuffer.buffer.subarray(contentStart, contentEnd);
-        const content = stdoutBuffer.textDecoder.decode(contentBytes);
-        
-        // 更新缓冲区
-        stdoutBuffer.buffer = stdoutBuffer.buffer.subarray(contentEnd);
-
+    const jsonOrNull = jsonStream.insert(charCode);
+    if (jsonOrNull !== null) {
         try {
-            const message = JSON.parse(content);
-            // 发送到主线程
+            const message = JSON.parse(jsonOrNull);
             self.postMessage({ type: 'lsp', message });
         } catch (e) {
-            console.error('[clangd-monaco-worker] Failed to parse message:', e, 'Content:', content);
+            console.error('[clangd-monaco-worker] Failed to parse JSON:', e);
         }
     }
 };
 
-// stderr 实现 - 收集完整行后输出
-const stderrBuffer = {
-    buffer: ''
-};
+// stderr
+const stderrBuffer = { buffer: '' };
 
 const stderr = (charCode) => {
     const char = String.fromCharCode(charCode);
@@ -145,7 +107,6 @@ const stderr = (charCode) => {
     }
 };
 
-// 错误处理
 let clangdStarted = false;
 
 const onAbort = (code) => {
@@ -157,7 +118,6 @@ const onAbort = (code) => {
 
 let sendToClangd = null;
 
-// 初始化 clangd
 async function initClangd(wasmUrl) {
     console.log('[clangd-monaco-worker] Initializing clangd...');
 
@@ -175,9 +135,6 @@ async function initClangd(wasmUrl) {
         ALLOW_MEMORY_GROWTH: true,
     });
 
-    clangdInstance = Module;
-
-    // clangd 编译参数
     const flags = [
         '--target=wasm32-wasi',
         '-isystem/usr/include/c++/v1',
@@ -190,11 +147,10 @@ async function initClangd(wasmUrl) {
         '-Wall'
     ];
 
-    // 创建虚拟文件系统
     try {
         Module.FS.createPath('/usr', 'include', true, true);
         Module.FS.createPath('/usr/include', 'bits', true, true);
-        
+
         const stdcPlusPlusContent = `// bits/stdc++.h - Virtual header for clangd
 #ifndef _GLIBCXX_BITS_STDCC_H
 #define _GLIBCXX_BITS_STDCC_H
@@ -275,13 +231,16 @@ async function initClangd(wasmUrl) {
     Module.FS.writeFile('/home/web_user/.clangd', JSON.stringify({
         CompileFlags: { Add: flags }
     }));
+    Module.FS.writeFile('/home/web_user/.clang-format', `BasedOnStyle: LLVM
+IndentWidth: 4
+UseTab: Never
+`);
     Module.FS.writeFile('/home/web_user/main.cpp', '');
 
     console.log('[clangd-monaco-worker] Starting clangd server...');
 
     sendToClangd = (data) => {
         const body = JSON.stringify(data);
-        // 使用 TextEncoder 计算正确的 UTF-8 字节长度
         const bodyBytes = textEncoder.encode(body);
         const header = `Content-Length: ${bodyBytes.length}\r\n`;
         const delimiter = '\r\n';
@@ -289,17 +248,13 @@ async function initClangd(wasmUrl) {
         resolveStdinReady();
     };
 
-    // 启动 clangd - 使用空参数列表
-    // callMain 会阻塞直到 clangd 进入事件循环
     Module.callMain([]);
 
-    // 如果 callMain 返回，说明启动成功（clangd 会后台运行）
     clangdStarted = true;
     console.log('[clangd-monaco-worker] Clangd started!');
     self.postMessage({ type: 'ready' });
 }
 
-// 处理来自主线程的消息
 self.onmessage = async (e) => {
     const { type, message, wasmUrl } = e.data;
 

@@ -53,7 +53,7 @@
         <div class="dropdown-divider"></div>
         <div class="dropdown-item" id="window-reload">重载</div>
         <div class="dropdown-divider"></div>
-        <div class="dropdown-item" id="restart-clangd-btn" style="cursor: pointer;">重启clangd</div>
+        <div class="dropdown-item" id="restart-clangd-btn" style="cursor: pointer;">重启 Clangd</div>
     </div>
 
     <!-- 帮助下拉菜单 -->
@@ -207,18 +207,18 @@
                 </div>
                 <div class="setting-item">
                     <label for="clangd-enabled">
-                        <input type="checkbox" id="clangd-enabled"> Clangd 前端语言服务器 (实验性)
+                        <input type="checkbox" id="clangd-enabled"> Clangd 语言服务器 (补全/跳转/诊断/格式化)
                     </label>
                     <span id="clangd-info" title="了解更多" style="margin-left: 5px; cursor: pointer; color: #00aaff; text-decoration: underline;">ⓘ</span>
                 </div>
                 <div class="setting-item" id="clangd-completion-setting" style="display: none; margin-left: 20px;">
                     <label for="clangd-completion-enabled">
-                        <input type="checkbox" id="clangd-completion-enabled"> 使用 Clangd 进行代码提示 (实验性)
+                        <input type="checkbox" id="clangd-completion-enabled"> Clangd 代码补全
                     </label>
                 </div>
                 <div class="setting-item" id="clangd-semantic-setting" style="display: none; margin-left: 20px;">
                     <label for="clangd-semantic-enabled">
-                        <input type="checkbox" id="clangd-semantic-enabled"> 使用 Clangd 进行语法高亮 (实验性，若卡顿请关闭)
+                        <input type="checkbox" id="clangd-semantic-enabled"> Clangd 语义高亮 (若卡顿请关闭)
                     </label>
                 </div>
             </div>
@@ -491,7 +491,7 @@
     <script src="/static/autocomplete.js"></script>
     <script src="/static/luogu.js"></script>
 
-    <!-- Clangd LSP Integration - 使用 Monaco 内置 LSP 客户端 -->
+    <!-- Clangd LSP Integration (补全/跳转/诊断/格式化/自动修复) -->
     <script src="/static/clangd_monaco_lsp.js"></script>
 
     <script src="/static/cph.js"></script>

@@ -595,7 +595,9 @@ require(['vs/editor/editor.main'], function() {
         },
         // 与 VSCode 一致的光标设置
         cursorBlinking: 'blink',
-        cursorSmoothCaretAnimation: 'on'
+        cursorSmoothCaretAnimation: 'on',
+        tabSize: 4,
+        insertSpaces: false
     });
 
     // 初始化 Monaco 主题（此时 monacoEditor 已定义）
@@ -1785,7 +1787,9 @@ function initPluginSettings() {
                         snippetsPrevented: !cppAutocompleteEnabled
                     },
                     cursorBlinking: 'blink',
-                    cursorSmoothCaretAnimation: 'on'
+                    cursorSmoothCaretAnimation: 'on',
+                    tabSize: 4,
+                    insertSpaces: false
                 });
 
                 // 恢复光标位置
@@ -2355,7 +2359,7 @@ function showClangdInfo() {
 
     // 添加标题
     const title = document.createElement('h3');
-    title.textContent = 'Clangd 前端语言服务器';
+    title.textContent = 'Clangd 语言服务器';
     title.style.color = titleColor;
     title.style.marginTop = '0';
     title.style.marginBottom = '15px';
@@ -2367,18 +2371,20 @@ function showClangdInfo() {
         <p>Clangd 是一个强大的 C/C++ 语言服务器，提供以下功能：</p>
         <ul style="margin: 15px 0; padding-left: 20px;">
             <li>实时错误诊断</li>
-            <li>代码提示</li>
+            <li>代码补全</li>
             <li>函数参数标签</li>
-            <li>鼠标悬停提示</li>
-            <li>语法高亮</li>
+            <li>鼠标悬停类型/文档提示</li>
+            <li>跳转到定义</li>
+            <li>代码操作/自动修复</li>
+            <li>代码格式化</li>
+            <li>语义高亮</li>
         </ul>
         <p><strong>注意事项：</strong></p>
         <ul style="margin: 15px 0; padding-left: 20px;">
-            <li>此功能为实验性功能，可能存在不稳定因素</li>
             <li>首次加载需要下载较大的 WASM 文件（约 25MB），请耐心等待</li>
-            <li>需要浏览器支持解压api</li>
+            <li>需要浏览器支持解压 API</li>
             <li>启用后会增加内存占用和初始加载时间</li>
-            <li>错误诊断延迟时间据电脑性能定</li>
+            <li>错误诊断延迟时间视电脑性能而定</li>
         </ul>
         <p>如果您在移动设备上使用或网络条件不佳，建议禁用此功能。</p>
     `;
