@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>PH code</title>
     <link rel="icon" href="/static/logo.png" type="image/x-icon">
+    <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
 
@@ -42,43 +43,61 @@
         { url: '/static/debug.png', type: 'img' }
     ];
     var totalBytes = 0, loadedBytes = 0;
+    var MAX_CONCURRENT = 4;
     function setProgress(pct) { bar.style.width = Math.min(pct, 100) + '%'; }
-    Promise.all(files.map(function(f) {
+
+    function loadOne(f) {
         return new Promise(function(resolve) {
-            var xhr = new XMLHttpRequest();
-            xhr.open('HEAD', f.url, true);
-            xhr.onload = function() { totalBytes += parseInt(xhr.getResponseHeader('Content-Length') || 50000); resolve(); };
-            xhr.onerror = function() { totalBytes += 50000; resolve(); };
-            xhr.send();
+            var h = new XMLHttpRequest();
+            h.open('HEAD', f.url, true);
+            h.onload = function() { totalBytes += parseInt(h.getResponseHeader('Content-Length') || 50000); getBody(f, resolve); };
+            h.onerror = function() { totalBytes += 50000; getBody(f, resolve); };
+            h.send();
         });
-    })).then(function() {
-        return Promise.all(files.map(function(f) {
-            return new Promise(function(resolve) {
-                var xhr = new XMLHttpRequest();
-                xhr.open('GET', f.url, true);
-                xhr.responseType = f.type === 'img' ? 'blob' : 'text';
-                xhr._lastLoaded = 0;
-                xhr.onprogress = function(e) {
-                    if (e.lengthComputable) {
-                        var d = e.loaded - xhr._lastLoaded;
-                        xhr._lastLoaded = e.loaded;
-                        loadedBytes += d;
-                        setProgress(loadedBytes / totalBytes * 100);
-                    }
-                };
-                xhr.onload = function() {
-                    if (xhr._lastLoaded < (xhr.response.size || xhr.response.length || 0)) {
-                        var d = (xhr.response.size || xhr.response.length || 0) - xhr._lastLoaded;
-                        loadedBytes += d;
-                        setProgress(loadedBytes / totalBytes * 100);
-                    }
-                    resolve(xhr.response);
-                };
-                xhr.onerror = function() { resolve(null); };
-                xhr.send();
-            });
-        }));
-    }).then(function(results) {
+    }
+
+    function getBody(f, resolve) {
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', f.url, true);
+        xhr.responseType = f.type === 'img' ? 'blob' : 'text';
+        xhr._lastLoaded = 0;
+        xhr.onprogress = function(e) {
+            if (e.lengthComputable) {
+                var d = e.loaded - xhr._lastLoaded;
+                xhr._lastLoaded = e.loaded;
+                loadedBytes += d;
+                setProgress(loadedBytes / totalBytes * 100);
+            }
+        };
+        xhr.onload = function() {
+            if (xhr._lastLoaded < (xhr.response.size || xhr.response.length || 0)) {
+                var d = (xhr.response.size || xhr.response.length || 0) - xhr._lastLoaded;
+                loadedBytes += d;
+                setProgress(loadedBytes / totalBytes * 100);
+            }
+            resolve(xhr.response);
+        };
+        xhr.onerror = function() { resolve(null); };
+        xhr.send();
+    }
+
+    function throttleLoad(list, limit) {
+        var i = 0, results = [];
+        return new Promise(function(resolveAll) {
+            function next() {
+                if (i >= list.length) { resolveAll(results); return; }
+                var batch = [];
+                for (var j = 0; j < limit && i < list.length; j++, i++) {
+                    var idx = i;
+                    batch.push(loadOne(list[idx]).then(function(r) { results[idx] = r; }));
+                }
+                Promise.all(batch).then(next);
+            }
+            next();
+        });
+    }
+
+    throttleLoad(files, MAX_CONCURRENT).then(function(results) {
         window._splashData = { files: files, results: results };
         window._splashReady = true;
     });
@@ -542,111 +561,51 @@
         </div>
     </div>
 
-    <!-- Clangd LSP (不经过 splash，单独加载) -->
-    <script src="/static/clangd_monaco_lsp.js"></script>
-
 <script>
 (function(){
-    function waitAndInject() {
-        if (!window._splashReady) { setTimeout(waitAndInject, 50); return; }
-        var data = window._splashData;
-        if (!data) return;
-        var files = data.files, results = data.results;
-
-        // 注入 CSS
-        for (var i = 0; i < files.length; i++) {
-            if (files[i].type === 'css' && results[i]) {
-                var style = document.createElement('style');
-                style.textContent = results[i];
-                document.head.appendChild(style);
-                break;
-            }
-        }
-
-        // 图片替换为 blob URL
-        for (var i = 0; i < files.length; i++) {
-            if (files[i].type === 'img' && results[i]) {
-                var url = files[i].url;
-                var blobUrl = URL.createObjectURL(results[i]);
-                var imgs = document.querySelectorAll('img[src="' + url.replace(/"/g, '\\"') + '"]');
-                for (var j = 0; j < imgs.length; j++) imgs[j].src = blobUrl;
-            }
-        }
-
-        // 等图片加载完
-        var allImgs = document.querySelectorAll('img');
-        var pending = [];
-        for (var i = 0; i < allImgs.length; i++) {
-            if (!allImgs[i].complete) {
-                pending.push(new Promise(function(resolve) {
-                    allImgs[i].onload = resolve;
-                    allImgs[i].onerror = resolve;
-                }));
-            }
-        }
-
-        // 引入 Marked.js、KaTeX（额外库，非核心但一并注入）
-        var extraScripts = [
-            '/static/lib/katex.min.css',
-            '/static/lib/marked.min.js',
-            '/static/lib/katex.min.js',
-            '/static/lib/auto-render.min.js'
-        ];
-
-        Promise.all(pending).then(function() {
-            // 注入额外 CSS
-            for (var e = 0; e < extraScripts.length; e++) {
-                if (extraScripts[e].endsWith('.css')) {
-                    var link = document.createElement('link');
-                    link.rel = 'stylesheet';
-                    link.href = extraScripts[e];
-                    document.head.appendChild(link);
-                }
-            }
-
-            // 注入额外 JS（marked、katex 等）
-            function injectExtra(idx) {
-                if (idx >= extraScripts.length) {
-                    // 注入核心 JS（按顺序）
-                    injectCore(0);
-                    return;
-                }
-                if (extraScripts[idx].endsWith('.js')) {
-                    var s = document.createElement('script');
-                    s.src = extraScripts[idx];
-                    s.onload = function() { injectExtra(idx + 1); };
-                    s.onerror = function() { injectExtra(idx + 1); };
-                    document.body.appendChild(s);
-                } else {
-                    injectExtra(idx + 1);
-                }
-            }
-            injectExtra(0);
-        });
-
-        function injectCore(idx) {
-            if (idx >= files.length) {
-                var splash = document.getElementById('splash-screen');
-                if (splash) {
-                    splash.style.opacity = '0';
-                    splash.style.transition = 'opacity 0.4s ease';
-                    setTimeout(function() { splash.style.display = 'none'; }, 400);
-                }
-                return;
-            }
-            if (files[idx].type === 'js' && results[idx]) {
-                var script = document.createElement('script');
-                script.src = files[idx].url;
-                script.onload = function() { injectCore(idx + 1); };
-                script.onerror = function() { injectCore(idx + 1); };
-                document.body.appendChild(script);
-            } else {
-                injectCore(idx + 1);
-            }
-        }
+    function hideSplash() {
+        var s = document.getElementById('splash-screen');
+        if (!s) return;
+        s.style.opacity = '0';
+        s.style.transition = 'opacity 0.4s ease';
+        setTimeout(function() { s.style.display = 'none'; }, 400);
     }
-    waitAndInject();
+    if (window._splashReady) { hideSplash(); return; }
+    Object.defineProperty(window, '_splashReady', { set: function(v) { if (v) hideSplash(); } });
 })();
 </script>
+
+    <!-- 引入 KaTeX CSS -->
+    <link rel="stylesheet" href="/static/lib/katex.min.css">
+
+    <!-- 引入 Marked.js 和 KaTeX JS -->
+    <script src="/static/lib/marked.min.js"></script>
+    <script src="/static/lib/katex.min.js"></script>
+    <script src="/static/lib/auto-render.min.js"></script>
+
+    <!-- Monaco Editor -->
+    <script src="/static/lib/monaco-editor/loader.js"></script>
+
+    <!-- pako.js for gzip decompression -->
+    <script src="/static/lib/pako.min.js"></script>
+
+    <!-- Core Scripts -->
+    <script src="/static/dialog.js"></script>
+    <script src="/static/dialog_polyfill.js"></script>
+    <script src="/static/vfs.js"></script>
+    <script src="/static/script.js"></script>
+    <script src="/static/code_features.js"></script>
+    <script src="/static/light_model.js"></script>
+    <script src="/static/habit_tracker.js"></script>
+    <script src="/static/autocomplete.js"></script>
+    <script src="/static/luogu.js"></script>
+
+    <!-- Clangd LSP Integration -->
+    <script src="/static/clangd_monaco_lsp.js"></script>
+
+    <script src="/static/cph.js"></script>
+    <script src="/static/mobile_autocomplete.js"></script>
+    <script src="/static/debug.js"></script>
+    <!-- <script src="/static/aidebug.js"></script> -->
 </body>
 </html>
