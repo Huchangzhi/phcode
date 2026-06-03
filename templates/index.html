@@ -5,9 +5,85 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>PH code</title>
     <link rel="icon" href="/static/logo.png" type="image/x-icon">
-    <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
+
+<!-- 启动页面 -->
+<div id="splash-screen" style="position:fixed;top:0;left:0;width:100%;height:100%;z-index:999999;background:#1e1e1e;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:sans-serif;">
+    <div style="color:#cccccc;font-size:22px;margin-bottom:24px;">PH Code Editor 正在启动</div>
+    <div style="width:280px;height:4px;background:#3e3e42;border-radius:2px;overflow:hidden;">
+        <div id="splash-progress" style="width:0;height:100%;background:#0e639c;border-radius:2px;"></div>
+    </div>
+</div>
+<script>
+(function(){
+    var bar = document.getElementById('splash-progress');
+    var files = [
+        { url: '/static/style.css', type: 'css' },
+        { url: '/static/lib/monaco-editor/loader.js', type: 'js' },
+        { url: '/static/lib/pako.min.js', type: 'js' },
+        { url: '/static/dialog.js', type: 'js' },
+        { url: '/static/dialog_polyfill.js', type: 'js' },
+        { url: '/static/vfs.js', type: 'js' },
+        { url: '/static/script.js', type: 'js' },
+        { url: '/static/code_features.js', type: 'js' },
+        { url: '/static/light_model.js', type: 'js' },
+        { url: '/static/habit_tracker.js', type: 'js' },
+        { url: '/static/autocomplete.js', type: 'js' },
+        { url: '/static/luogu.js', type: 'js' },
+        { url: '/static/cph.js', type: 'js' },
+        { url: '/static/mobile_autocomplete.js', type: 'js' },
+        { url: '/static/debug.js', type: 'js' },
+        { url: '/static/logo.png', type: 'img' },
+        { url: '/static/run.png', type: 'img' },
+        { url: '/static/file.png', type: 'img' },
+        { url: '/static/ext.png', type: 'img' },
+        { url: '/static/cph.png', type: 'img' },
+        { url: '/static/debug.png', type: 'img' }
+    ];
+    var totalBytes = 0, loadedBytes = 0;
+    function setProgress(pct) { bar.style.width = Math.min(pct, 100) + '%'; }
+    Promise.all(files.map(function(f) {
+        return new Promise(function(resolve) {
+            var xhr = new XMLHttpRequest();
+            xhr.open('HEAD', f.url, true);
+            xhr.onload = function() { totalBytes += parseInt(xhr.getResponseHeader('Content-Length') || 50000); resolve(); };
+            xhr.onerror = function() { totalBytes += 50000; resolve(); };
+            xhr.send();
+        });
+    })).then(function() {
+        return Promise.all(files.map(function(f) {
+            return new Promise(function(resolve) {
+                var xhr = new XMLHttpRequest();
+                xhr.open('GET', f.url, true);
+                xhr.responseType = f.type === 'img' ? 'blob' : 'text';
+                xhr._lastLoaded = 0;
+                xhr.onprogress = function(e) {
+                    if (e.lengthComputable) {
+                        var d = e.loaded - xhr._lastLoaded;
+                        xhr._lastLoaded = e.loaded;
+                        loadedBytes += d;
+                        setProgress(loadedBytes / totalBytes * 100);
+                    }
+                };
+                xhr.onload = function() {
+                    if (xhr._lastLoaded < (xhr.response.size || xhr.response.length || 0)) {
+                        var d = (xhr.response.size || xhr.response.length || 0) - xhr._lastLoaded;
+                        loadedBytes += d;
+                        setProgress(loadedBytes / totalBytes * 100);
+                    }
+                    resolve(xhr.response);
+                };
+                xhr.onerror = function() { resolve(null); };
+                xhr.send();
+            });
+        }));
+    }).then(function(results) {
+        window._splashData = { files: files, results: results };
+        window._splashReady = true;
+    });
+})();
+</script>
 
     <!-- VS Code 风格顶部菜单栏 -->
     <div id="top-menu-bar">
@@ -466,37 +542,111 @@
         </div>
     </div>
 
-    <!-- 引入 KaTeX CSS -->
-    <link rel="stylesheet" href="/static/lib/katex.min.css">
-
-    <!-- 引入 Marked.js 和 KaTeX JS -->
-    <script src="/static/lib/marked.min.js"></script>
-    <script src="/static/lib/katex.min.js"></script>
-    <script src="/static/lib/auto-render.min.js"></script>
-
-    <!-- Monaco Editor -->
-    <script src="/static/lib/monaco-editor/loader.js"></script>
-
-    <!-- pako.js for gzip decompression -->
-    <script src="/static/lib/pako.min.js"></script>
-
-    <!-- Core Scripts -->
-    <script src="/static/dialog.js"></script>
-    <script src="/static/dialog_polyfill.js"></script>
-    <script src="/static/vfs.js"></script>
-    <script src="/static/script.js"></script>
-    <script src="/static/code_features.js"></script>
-    <script src="/static/light_model.js"></script>
-    <script src="/static/habit_tracker.js"></script>
-    <script src="/static/autocomplete.js"></script>
-    <script src="/static/luogu.js"></script>
-
-    <!-- Clangd LSP Integration (补全/跳转/诊断/格式化/自动修复) -->
+    <!-- Clangd LSP (不经过 splash，单独加载) -->
     <script src="/static/clangd_monaco_lsp.js"></script>
 
-    <script src="/static/cph.js"></script>
-    <script src="/static/mobile_autocomplete.js"></script>
-    <script src="/static/debug.js"></script>
-    <!-- <script src="/static/aidebug.js"></script> -->
+<script>
+(function(){
+    function waitAndInject() {
+        if (!window._splashReady) { setTimeout(waitAndInject, 50); return; }
+        var data = window._splashData;
+        if (!data) return;
+        var files = data.files, results = data.results;
+
+        // 注入 CSS
+        for (var i = 0; i < files.length; i++) {
+            if (files[i].type === 'css' && results[i]) {
+                var style = document.createElement('style');
+                style.textContent = results[i];
+                document.head.appendChild(style);
+                break;
+            }
+        }
+
+        // 图片替换为 blob URL
+        for (var i = 0; i < files.length; i++) {
+            if (files[i].type === 'img' && results[i]) {
+                var url = files[i].url;
+                var blobUrl = URL.createObjectURL(results[i]);
+                var imgs = document.querySelectorAll('img[src="' + url.replace(/"/g, '\\"') + '"]');
+                for (var j = 0; j < imgs.length; j++) imgs[j].src = blobUrl;
+            }
+        }
+
+        // 等图片加载完
+        var allImgs = document.querySelectorAll('img');
+        var pending = [];
+        for (var i = 0; i < allImgs.length; i++) {
+            if (!allImgs[i].complete) {
+                pending.push(new Promise(function(resolve) {
+                    allImgs[i].onload = resolve;
+                    allImgs[i].onerror = resolve;
+                }));
+            }
+        }
+
+        // 引入 Marked.js、KaTeX（额外库，非核心但一并注入）
+        var extraScripts = [
+            '/static/lib/katex.min.css',
+            '/static/lib/marked.min.js',
+            '/static/lib/katex.min.js',
+            '/static/lib/auto-render.min.js'
+        ];
+
+        Promise.all(pending).then(function() {
+            // 注入额外 CSS
+            for (var e = 0; e < extraScripts.length; e++) {
+                if (extraScripts[e].endsWith('.css')) {
+                    var link = document.createElement('link');
+                    link.rel = 'stylesheet';
+                    link.href = extraScripts[e];
+                    document.head.appendChild(link);
+                }
+            }
+
+            // 注入额外 JS（marked、katex 等）
+            function injectExtra(idx) {
+                if (idx >= extraScripts.length) {
+                    // 注入核心 JS（按顺序）
+                    injectCore(0);
+                    return;
+                }
+                if (extraScripts[idx].endsWith('.js')) {
+                    var s = document.createElement('script');
+                    s.src = extraScripts[idx];
+                    s.onload = function() { injectExtra(idx + 1); };
+                    s.onerror = function() { injectExtra(idx + 1); };
+                    document.body.appendChild(s);
+                } else {
+                    injectExtra(idx + 1);
+                }
+            }
+            injectExtra(0);
+        });
+
+        function injectCore(idx) {
+            if (idx >= files.length) {
+                var splash = document.getElementById('splash-screen');
+                if (splash) {
+                    splash.style.opacity = '0';
+                    splash.style.transition = 'opacity 0.4s ease';
+                    setTimeout(function() { splash.style.display = 'none'; }, 400);
+                }
+                return;
+            }
+            if (files[idx].type === 'js' && results[idx]) {
+                var script = document.createElement('script');
+                script.src = files[idx].url;
+                script.onload = function() { injectCore(idx + 1); };
+                script.onerror = function() { injectCore(idx + 1); };
+                document.body.appendChild(script);
+            } else {
+                injectCore(idx + 1);
+            }
+        }
+    }
+    waitAndInject();
+})();
+</script>
 </body>
 </html>

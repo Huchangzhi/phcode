@@ -2430,7 +2430,7 @@ const prefsSetupFooter = document.getElementById('prefs-setup-footer');
 const closePrefsSetup = document.getElementById('close-prefs-setup');
 
 // 首选项设置状态
-let prefsSetupStep = 0; // 0: 设备类型, 1: 主题选择
+let prefsSetupStep = 0; // 0: 设备类型, 1: Clangd 设置, 2: 主题选择
 let selectedDeviceType = 'computer'; // 'computer' 或 'mobile'
 let selectedTheme = 'dark'; // 'dark', 'light', 或 'auto'
 
@@ -2529,11 +2529,121 @@ function renderPrefsSetup() {
         });
         
         document.getElementById('prefs-setup-next')?.addEventListener('click', () => {
-            prefsSetupStep = 1;
+            if (selectedDeviceType === 'computer') {
+                prefsSetupStep = 1;
+            } else {
+                prefsSetupStep = 2;
+            }
             renderPrefsSetup();
         });
         
     } else if (prefsSetupStep === 1) {
+        // 第2页：Clangd 设置（仅电脑模式）
+        prefsSetupContent.innerHTML = `
+            <div style="text-align: center; margin-bottom: 15px;">
+                <h2 style="color: #4daafc; margin-bottom: 8px; font-size: 18px;">🔧 Clangd 语言服务器</h2>
+                <p style="color: #999; font-size: 12px; margin: 0;">C/C++ 智能代码分析引擎</p>
+            </div>
+            
+            <div style="background-color: #2d1f3d; padding: 12px; border-radius: 6px; border-left: 3px solid #a855f7; margin-bottom: 15px;">
+                <p style="color: #e0c0ff; font-size: 12px; margin: 0 0 8px 0;">
+                    <strong>Clangd</strong> 是基于 Clang/LLVM 的 C/C++ 语言服务器，在浏览器中通过 WASM 运行。
+                </p>
+                <ul style="color: #b890e0; font-size: 11px; margin: 0; padding-left: 16px; line-height: 1.8;">
+                    <li>✅ <strong>实时错误诊断</strong> — 代码输入时即时显示编译错误与警告</li>
+                    <li>✅ <strong>代码补全</strong> — 智能感知变量、函数、类型，支持模糊匹配</li>
+                    <li>✅ <strong>跳转到定义</strong> — 按住 Ctrl 点击或右键跳转到符号定义位置</li>
+                    <li>✅ <strong>代码操作/自动修复</strong> — 点击💡图标应用 clang-tidy 建议修复</li>
+                    <li>✅ <strong>代码格式化</strong> — 右键菜单或快捷键格式化整份文档</li>
+                    <li>✅ <strong>悬停提示</strong> — 鼠标悬停显示类型签名和文档注释</li>
+                    <li>✅ <strong>语义高亮</strong> — 区分变量/函数/类型/参数等不同符号颜色</li>
+                </ul>
+                <p style="color: #c9a0ff; font-size: 11px; margin: 6px 0 0 0;">
+                    ⚠️ 首次启用需要下载约 25MB WASM 文件，请耐心等待。
+                </p>
+                <p style="color: #ffa07a; font-size: 12px; margin: 6px 0 0 0; font-weight: bold;">
+                    ⚡ 为了优先的体验，建议运行内存空余大于2GB使用该功能，启用后请刷新以使用
+                </p>
+            </div>
+
+            <div style="margin-bottom: 10px;">
+                <label style="display: flex; align-items: center; cursor: pointer; padding: 8px; background-color: #3e3e42; border-radius: 6px;">
+                    <input type="checkbox" id="qs-clangd-enabled" style="margin-right: 10px; width: 16px; height: 16px;" ${localStorage.getItem('phoi_clangd_enabled') === 'true' ? 'checked' : ''}>
+                    <div>
+                        <div style="font-size: 14px; font-weight: bold;">启用 Clangd</div>
+                        <div style="font-size: 11px; color: #999;">提供完整的 C/C++ 语言智能</div>
+                    </div>
+                </label>
+            </div>
+
+            <div id="qs-clangd-subsettings" style="margin-left: 26px; ${localStorage.getItem('phoi_clangd_enabled') === 'true' ? '' : 'display: none;'}">
+                <label style="display: flex; align-items: center; cursor: pointer; padding: 6px 8px; margin-bottom: 6px; background-color: #383838; border-radius: 4px;">
+                    <input type="checkbox" id="qs-clangd-completion-enabled" style="margin-right: 8px; width: 14px; height: 14px;" ${localStorage.getItem('phoi_clangd_completion_enabled') === 'true' ? 'checked' : ''}>
+                    <div>
+                        <div style="font-size: 13px;">代码补全</div>
+                        <div style="font-size: 11px; color: #999;">智能感知变量、函数、类型</div>
+                    </div>
+                </label>
+                <label style="display: flex; align-items: center; cursor: pointer; padding: 6px 8px; background-color: #383838; border-radius: 4px;">
+                    <input type="checkbox" id="qs-clangd-semantic-enabled" style="margin-right: 8px; width: 14px; height: 14px;" ${localStorage.getItem('phoi_clangd_semantic_enabled') === 'true' ? 'checked' : ''}>
+                    <div>
+                        <div style="font-size: 13px;">语义高亮</div>
+                        <div style="font-size: 11px; color: #999;">区分变量/函数/类型/参数颜色</div>
+                    </div>
+                </label>
+            </div>
+        `;
+
+        // 更新底部按钮
+        prefsSetupFooter.innerHTML = `
+            <button id="prefs-setup-back" class="modal-btn" style="background-color: #3e3e42;">上一步</button>
+            <button id="prefs-setup-next2" class="modal-btn" style="background-color: #0e639c;">下一步</button>
+        `;
+
+        // 为 Clangd 主开关添加事件
+        document.getElementById('qs-clangd-enabled')?.addEventListener('change', function() {
+            const subSettings = document.getElementById('qs-clangd-subsettings');
+            if (subSettings) {
+                subSettings.style.display = this.checked ? 'block' : 'none';
+            }
+            if (!this.checked) {
+                const cb1 = document.getElementById('qs-clangd-completion-enabled');
+                const cb2 = document.getElementById('qs-clangd-semantic-enabled');
+                if (cb1) cb1.checked = false;
+                if (cb2) cb2.checked = false;
+            }
+        });
+
+        document.getElementById('prefs-setup-back')?.addEventListener('click', () => {
+            prefsSetupStep = 0;
+            renderPrefsSetup();
+        });
+
+        document.getElementById('prefs-setup-next2')?.addEventListener('click', () => {
+            // 保存 clangd 设置
+            const enabled = document.getElementById('qs-clangd-enabled')?.checked || false;
+            const completion = document.getElementById('qs-clangd-completion-enabled')?.checked || false;
+            const semantic = document.getElementById('qs-clangd-semantic-enabled')?.checked || false;
+            localStorage.setItem('phoi_clangd_enabled', enabled);
+            localStorage.setItem('phoi_clangd_completion_enabled', completion);
+            localStorage.setItem('phoi_clangd_semantic_enabled', semantic);
+
+            // 同步首选项面板的复选框
+            const mainEnabled = document.getElementById('clangd-enabled');
+            const mainCompletion = document.getElementById('clangd-completion-enabled');
+            const mainSemantic = document.getElementById('clangd-semantic-enabled');
+            if (mainEnabled) {
+                mainEnabled.checked = enabled;
+                mainEnabled.dispatchEvent(new Event('change'));
+            }
+            if (mainCompletion) mainCompletion.checked = completion;
+            if (mainSemantic) mainSemantic.checked = semantic;
+
+            prefsSetupStep = 2;
+            renderPrefsSetup();
+        });
+
+    } else if (prefsSetupStep === 2) {
         // 第2页：主题选择
         const currentTheme = localStorage.getItem(THEME_KEY) || 'dark';
         
@@ -2593,7 +2703,7 @@ function renderPrefsSetup() {
         });
         
         document.getElementById('prefs-setup-back')?.addEventListener('click', () => {
-            prefsSetupStep = 0;
+            prefsSetupStep = 1;
             renderPrefsSetup();
         });
         
@@ -2613,6 +2723,17 @@ function savePrefsSetup() {
     // 保存设置到 localStorage
     localStorage.setItem('phoi_deviceType', selectedDeviceType);
     localStorage.setItem(THEME_KEY, selectedTheme);
+    
+    // 如果跳过了 Clangd 设置页，保存当前值（默认关闭）
+    if (localStorage.getItem('phoi_clangd_enabled') === null) {
+        localStorage.setItem('phoi_clangd_enabled', 'false');
+    }
+    if (localStorage.getItem('phoi_clangd_completion_enabled') === null) {
+        localStorage.setItem('phoi_clangd_completion_enabled', 'false');
+    }
+    if (localStorage.getItem('phoi_clangd_semantic_enabled') === null) {
+        localStorage.setItem('phoi_clangd_semantic_enabled', 'false');
+    }
     
     // 应用设备类型设置
     if (selectedDeviceType === 'mobile') {
