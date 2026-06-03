@@ -46,42 +46,44 @@
     var MAX_CONCURRENT = 4;
     function setProgress(pct) { bar.style.width = Math.min(pct, 100) + '%'; }
 
-    function loadOne(f) {
+    function headOne(url) {
         return new Promise(function(resolve) {
             var h = new XMLHttpRequest();
-            h.open('HEAD', f.url, true);
-            h.onload = function() { totalBytes += parseInt(h.getResponseHeader('Content-Length') || 50000); getBody(f, resolve); };
-            h.onerror = function() { totalBytes += 50000; getBody(f, resolve); };
+            h.open('HEAD', url, true);
+            h.onload = function() { totalBytes += parseInt(h.getResponseHeader('Content-Length') || 50000); resolve(); };
+            h.onerror = function() { totalBytes += 50000; resolve(); };
             h.send();
         });
     }
 
-    function getBody(f, resolve) {
-        var xhr = new XMLHttpRequest();
-        xhr.open('GET', f.url, true);
-        xhr.responseType = f.type === 'img' ? 'blob' : 'text';
-        xhr._lastLoaded = 0;
-        xhr.onprogress = function(e) {
-            if (e.lengthComputable) {
-                var d = e.loaded - xhr._lastLoaded;
-                xhr._lastLoaded = e.loaded;
-                loadedBytes += d;
-                setProgress(loadedBytes / totalBytes * 100);
-            }
-        };
-        xhr.onload = function() {
-            if (xhr._lastLoaded < (xhr.response.size || xhr.response.length || 0)) {
-                var d = (xhr.response.size || xhr.response.length || 0) - xhr._lastLoaded;
-                loadedBytes += d;
-                setProgress(loadedBytes / totalBytes * 100);
-            }
-            resolve(xhr.response);
-        };
-        xhr.onerror = function() { resolve(null); };
-        xhr.send();
+    function getOne(f) {
+        return new Promise(function(resolve) {
+            var xhr = new XMLHttpRequest();
+            xhr.open('GET', f.url, true);
+            xhr.responseType = f.type === 'img' ? 'blob' : 'text';
+            xhr._lastLoaded = 0;
+            xhr.onprogress = function(e) {
+                if (e.lengthComputable) {
+                    var d = e.loaded - xhr._lastLoaded;
+                    xhr._lastLoaded = e.loaded;
+                    loadedBytes += d;
+                    setProgress(loadedBytes / totalBytes * 100);
+                }
+            };
+            xhr.onload = function() {
+                if (xhr._lastLoaded < (xhr.response.size || xhr.response.length || 0)) {
+                    var d = (xhr.response.size || xhr.response.length || 0) - xhr._lastLoaded;
+                    loadedBytes += d;
+                    setProgress(loadedBytes / totalBytes * 100);
+                }
+                resolve(xhr.response);
+            };
+            xhr.onerror = function() { resolve(null); };
+            xhr.send();
+        });
     }
 
-    function throttleLoad(list, limit) {
+    function throttleMap(list, fn, limit) {
         var i = 0, results = [];
         return new Promise(function(resolveAll) {
             function next() {
@@ -89,7 +91,7 @@
                 var batch = [];
                 for (var j = 0; j < limit && i < list.length; j++, i++) {
                     var idx = i;
-                    batch.push(loadOne(list[idx]).then(function(r) { results[idx] = r; }));
+                    batch.push(fn(list[idx]).then(function(r) { results[idx] = r; }));
                 }
                 Promise.all(batch).then(next);
             }
@@ -97,7 +99,10 @@
         });
     }
 
-    throttleLoad(files, MAX_CONCURRENT).then(function(results) {
+    // 先全部 HEAD 确定 totalBytes，再 GET
+    throttleMap(files, function(f) { return headOne(f.url); }, MAX_CONCURRENT).then(function() {
+        return throttleMap(files, function(f) { return getOne(f); }, MAX_CONCURRENT);
+    }).then(function(results) {
         window._splashData = { files: files, results: results };
         window._splashReady = true;
     });
@@ -465,7 +470,11 @@
     <!-- 中心编辑器区域 -->
     <div id="editor-area" style="flex: 1; display: flex; overflow: hidden;">
         <!-- 编辑器容器 -->
-        <div id="editor-container" style="flex: 1; height: 100%;"></div>
+        <div id="editor-container" style="flex: 1; height: 100%; position: relative;">
+            <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:#666;font-size:14px;text-align:center;pointer-events:none;">
+                如果编辑器没有加载，请刷新一下
+            </div>
+        </div>
     </div>
 
     <!-- 移动端代码补全容器 -->
