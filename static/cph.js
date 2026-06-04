@@ -675,13 +675,8 @@ function initCPHPlugin() {
     if (pluginSwitch) {
         // 检查本地存储中的插件状态
         const savedState = localStorage.getItem('cph_plugin_enabled');
-        if (savedState !== null) {
-            // 使用本地存储的状态
-            pluginSwitch.checked = savedState === 'true';
-        } else {
-            // 默认为关闭状态
-            pluginSwitch.checked = false;
-        }
+        // 默认启用（首次访问时不存在存储值）
+        pluginSwitch.checked = savedState !== null ? savedState === 'true' : true;
         
         pluginSwitch.addEventListener('change', function() {
             // 保存插件状态到本地存储

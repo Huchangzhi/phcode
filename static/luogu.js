@@ -85,12 +85,12 @@ function getLuoguThemeColors() {
 }
 
 // 初始化洛谷插件设置变量
-window.luoguThemeEnabled = localStorage.getItem('phoi_luogu_theme_enabled') === 'true'; // 默认为false
+window.luoguThemeEnabled = localStorage.getItem('phoi_luogu_theme_enabled') !== 'false'; // 默认启用
 
 // 初始化洛谷题目功能
 function initLuoguFeature() {
-    // 从localStorage获取洛谷插件状态，如果不存在则默认为false
-    window.luoguThemeEnabled = localStorage.getItem('phoi_luogu_theme_enabled') === 'true';
+    // 从localStorage获取洛谷插件状态，如果不存在则默认启用
+    window.luoguThemeEnabled = localStorage.getItem('phoi_luogu_theme_enabled') !== 'false';
     
     // 根据插件设置决定是否显示洛谷按钮
     updateLuoguButtonVisibility();

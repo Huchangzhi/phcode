@@ -377,8 +377,36 @@ class MonacoClangdLSP {
 
     handleLSPMessage(message) {
 
+        if (message.id !== undefined && message.method) {
+            // 服务器发起的请求（带 id 和 method，不是我们的请求的响应）
+            if (message.method === 'workspace/applyEdit') {
+                const edit = message.params?.edit;
+                this.sendToWorker({
+                    jsonrpc: '2.0',
+                    id: message.id,
+                    result: { applied: true }
+                });
+                for (const [pid, pending] of this.pendingRequests) {
+                    if (pending.method === 'workspace/executeCommand') {
+                        clearTimeout(pending.timeout);
+                        this.pendingRequests.delete(pid);
+                        pending.resolve(edit);
+                        break;
+                    }
+                }
+                return;
+            }
+            // 不认识的服务器请求，回复错误
+            this.sendToWorker({
+                jsonrpc: '2.0',
+                id: message.id,
+                error: { code: -32601, message: 'Method not found' }
+            });
+            return;
+        }
+
         if (message.id !== undefined) {
-            // 响应消息
+            // 响应消息（只有 id，没有 method）
             const pending = this.pendingRequests.get(message.id);
             if (pending) {
                 clearTimeout(pending.timeout);
@@ -393,7 +421,7 @@ class MonacoClangdLSP {
                 console.warn(`[MonacoClangd] Received response for unknown request: id=${message.id}`);
             }
         } else if (message.method) {
-            // 服务器通知
+            // 服务器通知（无 id）
             if (message.method === 'textDocument/publishDiagnostics') {
                 this.handleDiagnostics(message.params);
             }
@@ -482,10 +510,10 @@ class MonacoClangdLSP {
         const result = await this.sendRequest('textDocument/completion', params);
         if (!result || !result.items) return [];
 
-        return result.items.map(item => this.convertCompletionItem(item));
+        return result.items.map(item => this.convertCompletionItem(item, model));
     }
 
-    convertCompletionItem(item) {
+    convertCompletionItem(item, model) {
         const kindMap = {
             1: monaco.languages.CompletionItemKind.Text,
             2: monaco.languages.CompletionItemKind.Method,
@@ -514,13 +542,6 @@ class MonacoClangdLSP {
             25: monaco.languages.CompletionItemKind.TypeParameter
         };
 
-        let insertText = item.label;
-        if (item.textEdit) {
-            insertText = item.textEdit.newText || item.textEdit;
-        } else if (item.insertText) {
-            insertText = item.insertText;
-        }
-
         // 过滤 ANSI 控制字符和乱码
         const cleanLabel = this.cleanString(item.label);
         const cleanDetail = this.cleanString(item.detail || '');
@@ -528,18 +549,47 @@ class MonacoClangdLSP {
             item.documentation ?
                 (typeof item.documentation === 'string' ? item.documentation : item.documentation.value) : ''
         );
-        const cleanInsertText = this.cleanString(insertText);
 
-        return {
+        const monacoItem = {
             label: cleanLabel,
             kind: kindMap[item.kind] || monaco.languages.CompletionItemKind.Text,
             detail: cleanDetail,
             documentation: cleanDocumentation,
-            insertText: cleanInsertText,
-            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+            insertTextRules: item.insertTextFormat === 2
+                ? monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet
+                : monaco.languages.CompletionItemInsertTextRule.None,
             sortText: item.sortText || item.label,
             filterText: item.filterText || item.label
         };
+
+        if (item.textEdit && item.textEdit.range) {
+            const te = item.textEdit;
+            let newText = te.newText || item.label;
+
+            // 如果 newText 末尾是 > 且 range 结束位置后面已经有一个 >，去掉多余的
+            if (newText.endsWith('>') && model) {
+                const lineContent = model.getLineContent(te.range.end.line + 1);
+                if (lineContent[te.range.end.character] === '>') {
+                    newText = newText.slice(0, -1);
+                }
+            }
+
+            monacoItem.range = {
+                startLineNumber: te.range.start.line + 1,
+                startColumn: te.range.start.character + 1,
+                endLineNumber: te.range.end.line + 1,
+                endColumn: te.range.end.character + 1
+            };
+            monacoItem.insertText = this.cleanString(newText);
+        } else if (item.textEdit) {
+            monacoItem.insertText = this.cleanString(typeof item.textEdit === 'string' ? item.textEdit : item.textEdit.newText || item.label);
+        } else if (item.insertText) {
+            monacoItem.insertText = this.cleanString(item.insertText);
+        } else {
+            monacoItem.insertText = cleanLabel;
+        }
+
+        return monacoItem;
     }
 
     // 清理字符串中的 ANSI 控制字符和乱码
@@ -1073,6 +1123,24 @@ class MonacoClangdLSP {
 
         const result = await this.sendRequest('textDocument/codeAction', params);
         if (!result || !Array.isArray(result)) return null;
+
+        // 对只有 command 没有 edit 的 action，短暂尝试执行命令获取编辑结果
+        const cmdOnlyActions = result.filter(a => a.title && a.command && !a.edit);
+        if (cmdOnlyActions.length > 0) {
+            const timeout3s = new Promise(r => setTimeout(() => r(undefined), 3000));
+            const execResults = await Promise.all(
+                cmdOnlyActions.map(a => Promise.race([
+                    this.sendRequest('workspace/executeCommand', {
+                        command: a.command.command,
+                        arguments: a.command.arguments || []
+                    }),
+                    timeout3s
+                ]))
+            );
+            for (let i = 0; i < cmdOnlyActions.length; i++) {
+                if (execResults[i]) cmdOnlyActions[i].edit = execResults[i];
+            }
+        }
 
         const actions = result
             .filter(a => a.title)
