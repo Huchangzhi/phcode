@@ -34,6 +34,7 @@
         { url: '/static/luogu.js', type: 'js' },
         { url: '/static/cph.js', type: 'js' },
         { url: '/static/mobile_autocomplete.js', type: 'js' },
+        { url: '/static/local_compile.js', type: 'js' },
         { url: '/static/debug.js', type: 'js' },
         { url: '/static/logo.png', type: 'img' },
         { url: '/static/run.png', type: 'img' },
@@ -319,6 +320,18 @@
                 <div class="setting-item" id="clangd-semantic-setting" style="display: none; margin-left: 20px;">
                     <label for="clangd-semantic-enabled">
                         <input type="checkbox" id="clangd-semantic-enabled"> Clangd 语义高亮 (若卡顿请关闭)
+                    </label>
+                </div>
+                <div class="setting-item">
+                    <label for="local-compile-enabled">
+                        <input type="checkbox" id="local-compile-enabled"> 浏览器内本地编译（实验性，WASM）
+                    </label>
+                    <span id="local-compile-info" title="了解更多" style="margin-left: 5px; cursor: pointer; color: #00aaff; text-decoration: underline;">ⓘ</span>
+                    <span style="font-size: 12px; color: var(--text-secondary, #888); margin-left: 24px; display: block;">在浏览器中用WebAssembly编译运行C++，无需远程服务器</span>
+                </div>
+                <div class="setting-item" id="local-compile-terminate-setting" style="display: none; margin-left: 20px;">
+                    <label for="local-compile-terminate">
+                        <input type="checkbox" id="local-compile-terminate"> 运行后结束编译器节省内存（下次运行更慢）
                     </label>
                 </div>
             </div>
@@ -608,6 +621,9 @@
     <script src="/static/habit_tracker.js"></script>
     <script src="/static/autocomplete.js"></script>
     <script src="/static/luogu.js"></script>
+
+    <!-- Local C++ Compilation (WASM) -->
+    <script src="/static/local_compile.js"></script>
 
     <!-- Clangd LSP Integration -->
     <script src="/static/clangd_monaco_lsp.js"></script>

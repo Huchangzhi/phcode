@@ -570,19 +570,19 @@ class CPHPlugin {
             }
 
             try {
-                // 调用后端API运行代码
-                const response = await fetch('/run', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        code: code,
-                        input: stdin
-                    })
-                });
-
-                const result = await response.json();
+                const useLocal = localStorage.getItem('phoi_local_compile_enabled') === 'true'
+                    && window.LocalCompile && window.LocalCompile.isAvailable();
+                let result;
+                if (useLocal) {
+                    result = await window.LocalCompile.compileAndRun(code, stdin);
+                } else {
+                    const response = await fetch('/run', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ code, input: stdin })
+                    });
+                    result = await response.json();
+                }
 
                 // 检查结果
                 let status = '✅ 通过';

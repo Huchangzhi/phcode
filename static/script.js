@@ -397,7 +397,7 @@ function createClangdDownloadProgress() {
 }
 
 // Update clangd download progress
-function updateClangdDownloadProgress(status, progress, max) {
+function updateClangdDownloadProgress(status, progress, max, detailText) {
     // Only log significant status changes
     if (status === 'loading' || status === 'ready' || status === 'failed') {
         console.log('[ClangdProgress] status:', status);
@@ -417,7 +417,17 @@ function updateClangdDownloadProgress(status, progress, max) {
         'loading_module': '正在加载模块...',
         'initializing': '正在初始化 LSP...',
         'ready': 'Clangd 加载完成!',
-        'failed': '加载失败'
+        'failed': '加载失败',
+        'dl_clang': '正在下载 Clang 编译器...',
+        'de_clang': '正在解压 Clang 编译器...',
+        'dl_lld': '正在下载 LLD 链接器...',
+        'de_lld': '正在解压 LLD 链接器...',
+        'dl_sysroot': '正在下载 C++ 标准库...',
+        'de_sysroot': '正在解压 C++ 标准库...',
+        'lc_init': '正在初始化编译器...',
+        'lc_compile': '正在编译...',
+        'lc_complete': '执行完成',
+        'lc_ready': '本地编译器就绪!',
     };
     title.textContent = statusMap[status] || status;
     
@@ -425,7 +435,7 @@ function updateClangdDownloadProgress(status, progress, max) {
     let percent = 0;
     if (max > 0) {
         percent = Math.round((progress / max) * 100);
-    } else if (status === 'ready') {
+    } else if (status === 'ready' || status === 'lc_ready' || status === 'lc_complete') {
         percent = 100;
     }
     
@@ -460,12 +470,14 @@ function updateClangdDownloadProgress(status, progress, max) {
         fileInfo.textContent = 'Clangd 启动成功!';
     } else if (status === 'failed') {
         fileInfo.textContent = '加载失败，请刷新重试';
+    } else if (detailText) {
+        fileInfo.textContent = detailText;
     } else {
         fileInfo.textContent = '';
     }
     
     // Progress bar color based on status
-    if (status === 'ready') {
+    if (status === 'ready' || status === 'lc_ready' || status === 'lc_complete') {
         fill.style.backgroundColor = '#4caf50';
     } else if (status === 'failed') {
         fill.style.backgroundColor = '#f48771';
@@ -474,7 +486,7 @@ function updateClangdDownloadProgress(status, progress, max) {
     }
     
     // Auto-hide after success
-    if (status === 'ready') {
+    if (status === 'ready' || status === 'lc_ready' || status === 'lc_complete') {
         setTimeout(() => {
             popup.style.display = 'none';
         }, 3000);
@@ -855,6 +867,31 @@ async function executeRunCode(stdin) {
     if (terminalRunContent) {
         terminalRunContent.innerHTML = '<span style="color:#888;">Compiling and running...</span>';
     }
+
+    // 检查是否启用本地编译
+    const useLocalCompile = localStorage.getItem('phoi_local_compile_enabled') === 'true'
+        && window.LocalCompile && window.LocalCompile.isAvailable();
+
+    if (useLocalCompile) {
+        try {
+            const data = await window.LocalCompile.compileAndRun(globalText, stdin);
+            let html = "";
+            if(data.Warnings) html += `<div class="out-section"><span class="out-title out-warn">WARNINGS:</span><div class="out-warn">${escapeHtml(data.Warnings)}</div></div>`;
+            if(data.Errors) html += `<div class="out-section"><span class="out-title out-err">ERRORS:</span><div class="out-err">${escapeHtml(data.Errors)}</div></div>`;
+            if(data.Result) html += `<div class="out-section"><span class="out-title">OUTPUT:</span><div class="out-res">${escapeHtml(data.Result)}</div></div>`;
+            else if(!data.Errors) html += `<div class="out-section"><span class="out-title">OUTPUT:</span><div class="out-res" style="color:#666">(No output)</div></div>`;
+            if(data.Stats) html += `<div class="out-stat">${escapeHtml(data.Stats)}</div>`;
+            if (terminalRunContent) {
+                terminalRunContent.innerHTML = html;
+            }
+        } catch (e) {
+            if (terminalRunContent) {
+                terminalRunContent.innerHTML = `<span class="out-err">Local Compile Error: ${escapeHtml(e.message)}</span>`;
+            }
+        }
+        return;
+    }
+
     try {
         const response = await fetch('/run', {
             method: 'POST',
@@ -2048,6 +2085,22 @@ window.PhoiAPI = {
             return await window.vfsModule.getFileList();
         }
         return [];
+    },
+
+    // 运行代码（支持本地编译和远程API）
+    runCode: async function(code, stdin) {
+        const useLocal = localStorage.getItem('phoi_local_compile_enabled') === 'true'
+            && window.LocalCompile && window.LocalCompile.isAvailable();
+        if (useLocal) {
+            return await window.LocalCompile.compileAndRun(code, stdin || '');
+        }
+        const response = await fetch('/run', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ code, input: stdin || '' })
+        });
+        if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
+        return await response.json();
     }
 };
 
@@ -2097,6 +2150,20 @@ function showPreferencesModal() {
         }
     }
 
+    // 加载本地编译设置
+    const localCompileCheckbox = document.getElementById('local-compile-enabled');
+    if (localCompileCheckbox) {
+        localCompileCheckbox.checked = localStorage.getItem('phoi_local_compile_enabled') === 'true';
+    }
+    const terminateSetting = document.getElementById('local-compile-terminate-setting');
+    if (terminateSetting) {
+        terminateSetting.style.display = localCompileCheckbox?.checked ? 'block' : 'none';
+    }
+    const terminateCheckbox = document.getElementById('local-compile-terminate');
+    if (terminateCheckbox) {
+        terminateCheckbox.checked = localStorage.getItem('phoi_local_compile_terminate') !== 'false';
+    }
+
     // 添加 clangd 启用状态变化监听（使用 onchange 避免重复绑定）
     if (clangdEnabledCheckbox) {
         clangdEnabledCheckbox.onchange = function() {
@@ -2117,6 +2184,14 @@ function showPreferencesModal() {
                     clangdSemanticCheckbox.checked = false;
                 }
             }
+        };
+    }
+
+    // 本地编译主开关变化时显示/隐藏子选项
+    if (localCompileCheckbox) {
+        localCompileCheckbox.onchange = function() {
+            const s = document.getElementById('local-compile-terminate-setting');
+            if (s) s.style.display = this.checked ? 'block' : 'none';
         };
     }
 
@@ -2194,6 +2269,31 @@ function savePreferencesChanges() {
             const isSemanticEnabled = clangdSemanticCheckbox.checked;
             if (isSemanticEnabled !== oldSemantic) {
                 localStorage.setItem('phoi_clangd_semantic_enabled', isSemanticEnabled);
+            }
+        }
+
+        // 保存本地编译设置
+        const localCompileCheckbox = document.getElementById('local-compile-enabled');
+        if (localCompileCheckbox) {
+            const oldLocal = localStorage.getItem('phoi_local_compile_enabled') === 'true';
+            const isLocal = localCompileCheckbox.checked;
+            if (isLocal !== oldLocal) {
+                localStorage.setItem('phoi_local_compile_enabled', isLocal);
+                if (isLocal) {
+                    showMessage('本地编译已启用！刷新页面后生效。', 'system');
+                } else {
+                    showMessage('本地编译已禁用！刷新页面后生效。', 'system');
+                }
+                changedCount++;
+            }
+        }
+        const terminateCheckbox = document.getElementById('local-compile-terminate');
+        if (terminateCheckbox) {
+            const oldTerminate = localStorage.getItem('phoi_local_compile_terminate') !== 'false';
+            const isTerminate = terminateCheckbox.checked;
+            if (isTerminate !== oldTerminate) {
+                localStorage.setItem('phoi_local_compile_terminate', isTerminate);
+                changedCount++;
             }
         }
 
@@ -2396,6 +2496,99 @@ function showClangdInfo() {
     buttonContainer.style.marginTop = '20px';
 
     // 确定按钮
+    const okButton = document.createElement('button');
+    okButton.textContent = '确定';
+    okButton.style.backgroundColor = btnPrimaryColor;
+    okButton.style.color = 'white';
+    okButton.style.border = 'none';
+    okButton.style.padding = '8px 16px';
+    okButton.style.borderRadius = '4px';
+    okButton.style.cursor = 'pointer';
+    okButton.onclick = function() {
+        document.body.removeChild(overlay);
+    };
+
+    buttonContainer.appendChild(okButton);
+    modal.appendChild(buttonContainer);
+
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+}
+
+// 显示本地编译信息
+function showLocalCompileInfo() {
+    const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+    const bgColor = isLight ? '#ffffff' : '#252526';
+    const textColor = isLight ? '#333333' : '#cccccc';
+    const titleColor = '#ffffff';
+    const btnPrimaryColor = isLight ? '#0078d4' : '#0e639c';
+
+    const overlay = document.createElement('div');
+    overlay.id = 'local-compile-info-overlay';
+    overlay.style.position = 'fixed';
+    overlay.style.top = '0';
+    overlay.style.left = '0';
+    overlay.style.width = '100%';
+    overlay.style.height = '100%';
+    overlay.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+    overlay.style.zIndex = '10000';
+    overlay.style.display = 'flex';
+    overlay.style.alignItems = 'center';
+    overlay.style.justifyContent = 'center';
+
+    const modal = document.createElement('div');
+    modal.id = 'local-compile-info-modal';
+    modal.style.backgroundColor = bgColor;
+    modal.style.padding = '20px';
+    modal.style.borderRadius = '8px';
+    modal.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.5)';
+    modal.style.textAlign = 'left';
+    modal.style.maxWidth = '560px';
+    modal.style.width = '80%';
+    modal.style.color = textColor;
+    modal.style.maxHeight = '80vh';
+    modal.style.overflowY = 'auto';
+
+    const title = document.createElement('h3');
+    title.textContent = '浏览器内本地编译（WASM）';
+    title.style.color = titleColor;
+    title.style.marginTop = '0';
+    title.style.marginBottom = '15px';
+    modal.appendChild(title);
+
+    const content = document.createElement('div');
+    content.innerHTML = `
+        <p>基于 <a href="https://github.com/BertalanD/browsercc" target="_blank" style="color: #00aaff;"><strong>browsercc</strong></a> 在浏览器中用 WebAssembly 编译并运行 C++ 代码，无需远程服务器。</p>
+        <p><strong>编译流程：</strong></p>
+        <ul style="margin: 15px 0; padding-left: 20px;">
+            <li>Clang（WASM 编译器）将代码编译为 .o 目标文件</li>
+            <li>LLD（WASM 链接器）链接生成最终 .wasm 可执行文件</li>
+            <li>使用内置 WASI 运行时实例化并运行，捕获 stdout/stderr</li>
+        </ul>
+        <p><strong>资源消耗：</strong></p>
+        <ul style="margin: 15px 0; padding-left: 20px;">
+            <li><strong>下载体积：</strong>clang.wasm 约 14MB + lld.wasm 约 8MB + sysroot.tar 约 5MB = 共约 <strong>27MB</strong>（gzip 压缩，首次运行时下载）</li>
+            <li><strong>内存占用（空闲）：</strong>约 270MB（浏览器基础 + 编辑器 + Clangd）</li>
+            <li><strong>内存占用（编译时）：</strong>约 1000MB（Worker 独占约 730MB WASM 堆）</li>
+            <li><strong>内存回收：</strong>启用"运行后结束编译器"选项可终止 Worker 释放约 730MB，回落至 ~270MB</li>
+            <li><strong>CPU：</strong>编译期满载单核，大型模板可能耗时 30s+</li>
+        </ul>
+        <p><strong>注意事项：</strong></p>
+        <ul style="margin: 15px 0; padding-left: 20px;">
+            <li>需要 <code>Cross-Origin-Isolated</code> 标头（SharedArrayBuffer）</li>
+            <li>不支持 Exception（已设 <code>-fno-exceptions</code>）</li>
+            <li>运行超时 5 秒，编译无超时</li>
+            <li>编译器 Worker 持有 ~1GB 虚拟地址空间，低内存设备请关闭此功能</li>
+            <li>支持 C++14 及以下标准库（WASI sysroot）</li>
+        </ul>
+        <p style="font-size: 12px; color: #888;">当前实测：空载 270MB → 编译峰值 1001MB（Worker 终止后回落）</p>
+    `;
+    modal.appendChild(content);
+
+    const buttonContainer = document.createElement('div');
+    buttonContainer.style.textAlign = 'right';
+    buttonContainer.style.marginTop = '20px';
+
     const okButton = document.createElement('button');
     okButton.textContent = '确定';
     okButton.style.backgroundColor = btnPrimaryColor;
@@ -2733,6 +2926,12 @@ function savePrefsSetup() {
     }
     if (localStorage.getItem('phoi_clangd_semantic_enabled') === null) {
         localStorage.setItem('phoi_clangd_semantic_enabled', 'false');
+    }
+    if (localStorage.getItem('phoi_local_compile_enabled') === null) {
+        localStorage.setItem('phoi_local_compile_enabled', 'false');
+    }
+    if (localStorage.getItem('phoi_local_compile_terminate') === null) {
+        localStorage.setItem('phoi_local_compile_terminate', 'true');
     }
     
     // 应用设备类型设置
@@ -3094,6 +3293,10 @@ document.addEventListener('click', function(event) {
     if (event.target && event.target.id === 'clangd-info') {
         event.stopPropagation(); // 阻止事件冒泡
         showClangdInfo();
+    }
+    if (event.target && event.target.id === 'local-compile-info') {
+        event.stopPropagation();
+        showLocalCompileInfo();
     }
 });
 
