@@ -301,10 +301,16 @@
                     </select>
                 </div>
                 <div class="setting-item">
-                    <label for="native-fs-enabled">
-                        <input type="checkbox" id="native-fs-enabled"> 实验性功能：启用本地储存(不稳定)
+                    <label for="local-compile-enabled">
+                        <input type="checkbox" id="local-compile-enabled"> 浏览器内本地编译（实验性，WASM）
                     </label>
-                    <span id="local-storage-info" title="了解更多" style="margin-left: 5px; cursor: pointer; color: #00aaff; text-decoration: underline;">ⓘ</span>
+                    <span id="local-compile-info" title="了解更多" style="margin-left: 5px; cursor: pointer; color: #00aaff; text-decoration: underline;">ⓘ</span>
+                    <span style="font-size: 12px; color: var(--text-secondary, #888); margin-left: 24px; display: block;">在浏览器中用WebAssembly编译运行C++，无需远程服务器</span>
+                </div>
+                <div class="setting-item" id="local-compile-terminate-setting" style="display: none; margin-left: 20px;">
+                    <label for="local-compile-terminate">
+                        <input type="checkbox" id="local-compile-terminate"> 运行后结束编译器节省内存（下次运行更慢）
+                    </label>
                 </div>
                 <div class="setting-item">
                     <label for="clangd-enabled">
@@ -323,16 +329,10 @@
                     </label>
                 </div>
                 <div class="setting-item">
-                    <label for="local-compile-enabled">
-                        <input type="checkbox" id="local-compile-enabled"> 浏览器内本地编译（实验性，WASM）
+                    <label for="native-fs-enabled">
+                        <input type="checkbox" id="native-fs-enabled"> 实验性功能：启用本地储存(不稳定)
                     </label>
-                    <span id="local-compile-info" title="了解更多" style="margin-left: 5px; cursor: pointer; color: #00aaff; text-decoration: underline;">ⓘ</span>
-                    <span style="font-size: 12px; color: var(--text-secondary, #888); margin-left: 24px; display: block;">在浏览器中用WebAssembly编译运行C++，无需远程服务器</span>
-                </div>
-                <div class="setting-item" id="local-compile-terminate-setting" style="display: none; margin-left: 20px;">
-                    <label for="local-compile-terminate">
-                        <input type="checkbox" id="local-compile-terminate"> 运行后结束编译器节省内存（下次运行更慢）
-                    </label>
+                    <span id="local-storage-info" title="了解更多" style="margin-left: 5px; cursor: pointer; color: #00aaff; text-decoration: underline;">ⓘ</span>
                 </div>
             </div>
             <div class="modal-footer">
