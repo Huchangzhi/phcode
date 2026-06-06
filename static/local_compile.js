@@ -108,8 +108,8 @@ window.LocalCompile = (function () {
                     const runTimeout = setTimeout(() => {
                         pendingRequests.delete(msg.id);
                         terminateWorker();
-                        resolve({ Warnings: '', Errors: '运行超时（超过5秒），已终止', Result: '', Stats: '' });
-                    }, 5000);
+                        resolve({ Warnings: '', Errors: '运行超时（超过10秒），已终止', Result: '', Stats: '' });
+                    }, 10000);
                     pendingRequests.set(msg.id, (result) => {
                         clearTimeout(runTimeout);
                         if (shouldTerminate()) {
