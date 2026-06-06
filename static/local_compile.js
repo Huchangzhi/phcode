@@ -12,7 +12,7 @@ window.LocalCompile = (function () {
     let initShown = false;
 
     function isAvailable() {
-        return typeof SharedArrayBuffer !== 'undefined' && globalThis.crossOriginIsolated;
+        return typeof WebAssembly !== 'undefined' && typeof Worker !== 'undefined';
     }
 
     function onReady(cb) {

@@ -2575,7 +2575,6 @@ function showLocalCompileInfo() {
         </ul>
         <p><strong>注意事项：</strong></p>
         <ul style="margin: 15px 0; padding-left: 20px;">
-            <li>需要 <code>Cross-Origin-Isolated</code> 标头（SharedArrayBuffer）</li>
             <li>不支持 Exception（已设 <code>-fno-exceptions</code>）</li>
             <li>运行超时 5 秒，编译无超时</li>
             <li>编译器 Worker 持有 ~1GB 虚拟地址空间，低内存设备请关闭此功能</li>
