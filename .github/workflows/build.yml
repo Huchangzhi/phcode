@@ -400,7 +400,8 @@ jobs:
                   <activity
                       android:name=".MainActivity"
                       android:configChanges="orientation|screenSize|keyboardHidden"
-                      android:exported="true">
+                      android:exported="true"
+                      android:windowSoftInputMode="stateUnspecified|adjustResize">
                       <intent-filter>
                           <action android:name="android.intent.action.MAIN" />
                           <category android:name="android.intent.category.LAUNCHER" />
@@ -413,6 +414,358 @@ jobs:
           # MainActivity.java
           mkdir -p android-app/app/src/main/java/com/hcz/phcode
           cat > android-app/app/src/main/java/com/hcz/phcode/MainActivity.java << 'JAVAEOF'
+          package com.hcz.phcode;
+
+          import android.app.Activity;
+          import android.os.Bundle;
+
+          import org.mozilla.geckoview.GeckoRuntime;
+          import org.mozilla.geckoview.GeckoSession;
+          import org.mozilla.geckoview.GeckoView;
+
+          import java.io.IOException;
+          import java.io.InputStream;
+
+          import fi.iki.elonen.NanoHTTPD;
+
+          public class MainActivity extends Activity {
+              private static final int PORT = 27120;
+              private static GeckoRuntime sRuntime;
+              private GeckoSession session;
+              private AssetServer assetServer;
+
+              @Override
+              protected void onCreate(Bundle savedInstanceState) {
+                  super.onCreate(savedInstanceState);
+
+                  try {
+                      assetServer = new AssetServer();
+                      assetServer.start();
+                  } catch (IOException e) {
+                      throw new RuntimeException("Failed to start asset server", e);
+                  }
+
+                  GeckoView view = new GeckoView(this);
+                  setContentView(view);
+
+                  session = new GeckoSession();
+                  // workaround for Bug 1758212
+                  session.setContentDelegate(new GeckoSession.ContentDelegate() {});
+                  if (sRuntime == null) {
+                      sRuntime = GeckoRuntime.create(this);
+                  }
+                  session.open(sRuntime);
+                  view.setSession(session);
+                  session.loadUri("http://127.0.0.1:" + assetServer.getListeningPort() + "/index.html");
+              }
+
+              @Override
+              protected void onDestroy() {
+                  super.onDestroy();
+                  if (assetServer != null) {
+                      assetServer.stop();
+                  }
+                  if (session != null) {
+                      session.close();
+                  }
+              }
+
+              @Override
+              public void onBackPressed() {
+                  if (session != null) {
+                      session.goBack();
+                  } else {
+                      super.onBackPressed();
+                  }
+              }
+
+              private class AssetServer extends NanoHTTPD {
+                  AssetServer() {
+                      super(PORT);
+                  }
+
+                  @Override
+                  public Response serve(IHTTPSession session) {
+                      String uri = session.getUri();
+                      if (uri == null || uri.equals("/")) {
+                          uri = "/index.html";
+                      }
+                      try {
+                          String path = uri.startsWith("/") ? uri.substring(1) : uri;
+                          InputStream is = getAssets().open(path);
+                          String mimeType = mimeTypeForFile(uri);
+                          Response resp = newFixedLengthResponse(Response.Status.OK, mimeType, is, is.available());
+                          resp.addHeader("Access-Control-Allow-Origin", "*");
+                          if (uri.endsWith(".html") || uri.endsWith(".js") || uri.endsWith(".wasm")) {
+                              resp.addHeader("Cross-Origin-Opener-Policy", "same-origin");
+                              resp.addHeader("Cross-Origin-Embedder-Policy", "require-corp");
+                          }
+                          return resp;
+                      } catch (IOException e) {
+                          return newFixedLengthResponse(Response.Status.NOT_FOUND, "text/plain", "404");
+                      }
+                  }
+
+                  private String mimeTypeForFile(String uri) {
+                      if (uri.endsWith(".html")) return "text/html; charset=UTF-8";
+                      if (uri.endsWith(".js")) return "application/javascript; charset=UTF-8";
+                      if (uri.endsWith(".css")) return "text/css; charset=UTF-8";
+                      if (uri.endsWith(".wasm")) return "application/wasm";
+                      if (uri.endsWith(".png")) return "image/png";
+                      if (uri.endsWith(".ico")) return "image/x-icon";
+                      if (uri.endsWith(".svg")) return "image/svg+xml";
+                      if (uri.endsWith(".json")) return "application/json; charset=UTF-8";
+                      if (uri.endsWith(".tar")) return "application/x-tar";
+                      return "application/octet-stream";
+                  }
+              }
+          }
+          JAVAEOF
+
+          # build.gradle (app) — 使用动态版本号
+          VERSION_ESCAPED=$(echo "$VERSION" | sed 's/"/\\"/g')
+          cat > android-app/app/build.gradle << GRADLEOF
+          plugins { id 'com.android.application' }
+          android {
+              namespace 'com.hcz.phcode'
+              compileSdk 36
+              signingConfigs {
+                  release {
+                      storeFile file('phcode.keystore')
+                      storePassword System.getenv('KEYSTORE_PASSWORD')
+                      keyAlias System.getenv('KEY_ALIAS')
+                      keyPassword System.getenv('KEY_PASSWORD')
+                  }
+              }
+               defaultConfig {
+                   applicationId "com.hcz.phcode"
+                   minSdk 26
+                   targetSdk 36
+                   versionCode $VERSION_CODE
+                   versionName "$VERSION_ESCAPED"
+               }
+               splits {
+                   abi {
+                       enable true
+                       reset()
+                       include 'arm64-v8a', 'armeabi-v7a', 'x86_64'
+                       universalApk false
+                   }
+               }
+              buildTypes {
+                  release {
+                      minifyEnabled false
+                      signingConfig signingConfigs.release
+                  }
+                  debug { minifyEnabled false }
+              }
+              compileOptions {
+                  sourceCompatibility JavaVersion.VERSION_17
+                  targetCompatibility JavaVersion.VERSION_17
+              }
+          }
+          dependencies {
+              implementation 'org.nanohttpd:nanohttpd:2.3.1'
+              implementation "org.mozilla.geckoview:geckoview:151.0.20260601110758"
+          }
+          GRADLEOF
+
+          # build.gradle (project)
+          cat > android-app/build.gradle << 'GRADLEOF'
+          plugins { id 'com.android.application' version '9.2.1' apply false }
+          GRADLEOF
+
+          # settings.gradle
+          cat > android-app/settings.gradle << 'GRADLEOF'
+          pluginManagement {
+              repositories {
+                  google()
+                  mavenCentral()
+                  gradlePluginPortal()
+                  maven { url 'https://maven.mozilla.org/maven2/' }
+              }
+          }
+          dependencyResolutionManagement {
+              repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+              repositories {
+                  google()
+                  mavenCentral()
+                  maven { url 'https://maven.mozilla.org/maven2/' }
+              }
+          }
+          rootProject.name = "PHCODE"
+          include ':app'
+          GRADLEOF
+
+          # gradle.properties
+          cat > android-app/gradle.properties << 'EOF'
+          org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8
+          android.useAndroidX=true
+          EOF
+
+          # 创建 gradle wrapper 配置
+          cd android-app
+          mkdir -p gradle/wrapper
+          cat > gradle/wrapper/gradle-wrapper.properties << 'EOF'
+          distributionBase=GRADLE_USER_HOME
+          distributionPath=wrapper/dists
+          distributionUrl=https\://services.gradle.org/distributions/gradle-9.5.1-bin.zip
+          zipStoreBase=GRADLE_USER_HOME
+          zipStorePath=wrapper/dists
+          EOF
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Create Gradle Wrapper
+        run: |
+          cd android-app
+          curl -L -o gradle/wrapper/gradle-wrapper.jar \
+            "https://raw.githubusercontent.com/gradle/gradle/v9.5.1/gradle/wrapper/gradle-wrapper.jar"
+          curl -L -o gradlew \
+            "https://raw.githubusercontent.com/gradle/gradle/v9.5.1/gradlew"
+          chmod +x gradlew
+
+      - name: Decode keystore
+        run: |
+          # 从 GitHub Secrets 获取 base64 编码的 keystore，清理换行符和空格后解码
+          echo "${{ secrets.ANDROID_KEYSTORE }}" | tr -d '\n\r ' | base64 -d > android-app/app/phcode.keystore
+
+      - name: Build APK
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          cd android-app
+          ./gradlew assembleRelease --no-daemon
+
+      - name: Find APKs
+        id: find_apks
+        run: |
+          apk_dir="android-app/app/build/outputs/apk/release"
+          echo "找到 APK 文件:"
+          ls -lh "$apk_dir"/*.apk 2>/dev/null || echo "无 APK 文件"
+          # 保存 APK 目录给后续步骤
+          echo "apk_dir=$apk_dir" >> $GITHUB_OUTPUT
+
+      - name: Upload APK artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: PHCODE-android
+          path: ${{ steps.find_apks.outputs.apk_dir }}/*.apk
+
+      - name: Upload APKs to Release
+        run: |
+          tagName="${{ steps.get_version.outputs.tagName }}"
+          apk_dir="${{ steps.find_apks.outputs.apk_dir }}"
+          for apk in "$apk_dir"/*.apk; do
+            apk_name="PHCODE-$(basename "$apk")"
+            cp "$apk" "$apk_name"
+            gh release delete-asset "$tagName" "$apk_name" --yes 2>/dev/null || true
+            gh release upload "$tagName" "$apk_name"
+          done
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-android-lite:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: version-info
+
+      - name: Get version
+        id: get_version
+        run: |
+          VERSION=$(cat version_info.txt | tr -d '\n\r' | xargs)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          if [[ "$VERSION" == nightly-* ]]; then
+            TAG_NAME="nightly"
+          else
+            if [[ "$VERSION" == v* ]]; then
+              TAG_NAME="$VERSION"
+            else
+              TAG_NAME="v$VERSION"
+            fi
+          fi
+          echo "tagName=$TAG_NAME" >> $GITHUB_OUTPUT
+          VC=$(git rev-list --count HEAD)
+          echo "versionCode=$VC" >> $GITHUB_OUTPUT
+
+      - name: Prepare assets
+        run: |
+          VERSION="${{ steps.get_version.outputs.version }}"
+          mkdir -p android-lite/app/src/main/assets
+          echo '<script>window.RUN_API_URL="https://hcz1017.pythonanywhere.com/run";</script>' > android-lite/app/src/main/assets/index.html
+          cat templates/index.html >> android-lite/app/src/main/assets/index.html
+          sed -i "s|<p>web版本</p>|<p>版本号：$VERSION</p>|g" android-lite/app/src/main/assets/index.html
+          cp -r static android-lite/app/src/main/assets/static
+          sed -i 's|"/static/|"static/|g' android-lite/app/src/main/assets/index.html
+          find android-lite/app/src/main/assets/static -name "*.js" -exec sed -i "s|'/static/|'static/|g" {} \;
+          find android-lite/app/src/main/assets/static -name "*.js" -exec sed -i 's|"/static/|"static/|g' {} \;
+          find android-lite/app/src/main/assets/static -name "*.js" -exec sed -i 's|`/static/|`static/|g' {} \;
+          find android-lite/app/src/main/assets/static -name "*.js" -exec sed -i "s|fetch('/static/|fetch('static/|g" {} \;
+          find android-lite/app/src/main/assets/static -name "*.js" -exec sed -i 's|fetch("/static/|fetch("static/|g' {} \;
+          find android-lite/app/src/main/assets/static -name "*.js" -exec sed -i "s|fetch('/run'|fetch(window.RUN_API_URL|g" {} \;
+          find android-lite/app/src/main/assets/static -name "*.js" -exec sed -i 's|fetch("/run"|fetch(window.RUN_API_URL|g' {} \;
+          find android-lite/app/src/main/assets/static -name "*.js" -exec sed -i "s|'/run'|window.RUN_API_URL|g" {} \;
+          find android-lite/app/src/main/assets/static -name "*.js" -exec sed -i 's|"/run"|window.RUN_API_URL|g' {} \;
+
+      - name: Generate Android project
+        run: |
+          VERSION="${{ steps.get_version.outputs.version }}"
+          VERSION_CODE="${{ steps.get_version.outputs.versionCode }}"
+          mkdir -p android-lite/app/src/main/res/values
+          mkdir -p android-lite/app/src/main/res/mipmap-hdpi
+          mkdir -p android-lite/app/src/main/res/mipmap-xhdpi
+          mkdir -p android-lite/app/src/main/res/mipmap-xxhdpi
+          mkdir -p android-lite/app/src/main/res/mipmap-xxxhdpi
+          cat > android-lite/app/src/main/res/values/strings.xml << EOF
+          <?xml version="1.0" encoding="utf-8"?>
+          <resources><string name="app_name">PH CODE Lite</string></resources>
+          EOF
+          cp static/logo.png android-lite/app/src/main/res/mipmap-hdpi/ic_launcher.png
+          cp static/logo.png android-lite/app/src/main/res/mipmap-xhdpi/ic_launcher.png
+          cp static/logo.png android-lite/app/src/main/res/mipmap-xxhdpi/ic_launcher.png
+          cp static/logo.png android-lite/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
+
+          cat > android-lite/app/src/main/AndroidManifest.xml << 'XMLEOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+              <uses-permission android:name="android.permission.INTERNET" />
+              <application
+                  android:allowBackup="true"
+                  android:label="@string/app_name"
+                  android:icon="@mipmap/ic_launcher"
+                  android:supportsRtl="true"
+                  android:theme="@android:style/Theme.NoTitleBar.Fullscreen"
+                  android:usesCleartextTraffic="true">
+                  <activity
+                      android:name=".MainActivity"
+                      android:configChanges="orientation|screenSize|keyboardHidden"
+                      android:exported="true"
+                      android:windowSoftInputMode="adjustResize">
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN" />
+                          <category android:name="android.intent.category.LAUNCHER" />
+                      </intent-filter>
+                  </activity>
+              </application>
+          </manifest>
+          XMLEOF
+
+          mkdir -p android-lite/app/src/main/java/com/hcz/phcode
+          cat > android-lite/app/src/main/java/com/hcz/phcode/MainActivity.java << 'JAVAEOF'
           package com.hcz.phcode;
           import android.annotation.SuppressLint;
           import android.app.Activity;
@@ -449,12 +802,9 @@ jobs:
                           WebResourceResponse response = assetLoader.shouldInterceptRequest(request.getUrl());
                           if (response != null) {
                               String url = request.getUrl().toString();
-                              // 为 HTML 和 JS 文件添加 COOP + COEP 头（支持 SharedArrayBuffer）
                               if (url.endsWith(".html") || url.endsWith(".js") || url.endsWith(".wasm")) {
                                   Map<String, String> headers = response.getResponseHeaders();
-                                  if (headers == null) {
-                                      headers = new HashMap<>();
-                                  }
+                                  if (headers == null) headers = new HashMap<>();
                                   headers.put("Cross-Origin-Opener-Policy", "same-origin");
                                   headers.put("Cross-Origin-Embedder-Policy", "require-corp");
                                   response.setResponseHeaders(headers);
@@ -474,21 +824,12 @@ jobs:
           }
           JAVAEOF
 
-          # build.gradle (app) — 使用动态版本号
           VERSION_ESCAPED=$(echo "$VERSION" | sed 's/"/\\"/g')
-          cat > android-app/app/build.gradle << GRADLEOF
+          cat > android-lite/app/build.gradle << GRADLEOF
           plugins { id 'com.android.application' }
           android {
               namespace 'com.hcz.phcode'
               compileSdk 34
-              signingConfigs {
-                  release {
-                      storeFile file('phcode.keystore')
-                      storePassword System.getenv('KEYSTORE_PASSWORD')
-                      keyAlias System.getenv('KEY_ALIAS')
-                      keyPassword System.getenv('KEY_PASSWORD')
-                  }
-              }
               defaultConfig {
                   applicationId "com.hcz.phcode"
                   minSdk 21
@@ -497,10 +838,7 @@ jobs:
                   versionName "$VERSION_ESCAPED"
               }
               buildTypes {
-                  release {
-                      minifyEnabled false
-                      signingConfig signingConfigs.release
-                  }
+                  release { minifyEnabled false }
                   debug { minifyEnabled false }
               }
               compileOptions {
@@ -513,34 +851,27 @@ jobs:
           }
           GRADLEOF
 
-          # build.gradle (project)
-          cat > android-app/build.gradle << 'GRADLEOF'
+          cat > android-lite/build.gradle << 'GRADLEOF'
           plugins { id 'com.android.application' version '8.2.0' apply false }
           GRADLEOF
 
-          # settings.gradle
-          cat > android-app/settings.gradle << 'GRADLEOF'
-          pluginManagement {
-              repositories { google(); mavenCentral(); gradlePluginPortal() }
-          }
+          cat > android-lite/settings.gradle << 'GRADLEOF'
+          pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal() } }
           dependencyResolutionManagement {
               repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
               repositories { google(); mavenCentral() }
           }
-          rootProject.name = "PHCODE"
+          rootProject.name = "PHCODE_LITE"
           include ':app'
           GRADLEOF
 
-          # gradle.properties
-          cat > android-app/gradle.properties << 'EOF'
+          cat > android-lite/gradle.properties << 'EOF'
           org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8
           android.useAndroidX=true
           EOF
 
-          # 创建 gradle wrapper 配置
-          cd android-app
-          mkdir -p gradle/wrapper
-          cat > gradle/wrapper/gradle-wrapper.properties << 'EOF'
+          mkdir -p android-lite/gradle/wrapper
+          cat > android-lite/gradle/wrapper/gradle-wrapper.properties << 'EOF'
           distributionBase=GRADLE_USER_HOME
           distributionPath=wrapper/dists
           distributionUrl=https\://services.gradle.org/distributions/gradle-8.2-bin.zip
@@ -548,15 +879,14 @@ jobs:
           zipStorePath=wrapper/dists
           EOF
 
-      - name: Setup Java
-        uses: actions/setup-java@v4
+      - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: 17
 
       - name: Create Gradle Wrapper
         run: |
-          cd android-app
+          cd android-lite
           curl -L -o gradle/wrapper/gradle-wrapper.jar \
             "https://raw.githubusercontent.com/gradle/gradle/v8.2.0/gradle/wrapper/gradle-wrapper.jar"
           curl -L -o gradlew \
@@ -564,9 +894,7 @@ jobs:
           chmod +x gradlew
 
       - name: Decode keystore
-        run: |
-          # 从 GitHub Secrets 获取 base64 编码的 keystore，清理换行符和空格后解码
-          echo "${{ secrets.ANDROID_KEYSTORE }}" | tr -d '\n\r ' | base64 -d > android-app/app/phcode.keystore
+        run: echo "${{ secrets.ANDROID_KEYSTORE }}" | tr -d '\n\r ' | base64 -d > android-lite/app/phcode.keystore
 
       - name: Build APK
         env:
@@ -574,30 +902,27 @@ jobs:
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
-          cd android-app
+          cd android-lite
           ./gradlew assembleRelease --no-daemon
 
       - name: Find APK
         id: find_apk
         run: |
-          apk_path=$(find android-app/app/build/outputs/apk -name "*.apk" | head -1)
+          apk_path=$(find android-lite/app/build/outputs/apk -name "*.apk" | head -1)
           echo "apk_path=$apk_path" >> $GITHUB_OUTPUT
-          echo "找到 APK: $apk_path"
+          echo "找到 Lite APK: $apk_path"
 
-      - name: Upload APK artifact
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
-          name: PHCODE-android
+          name: PHCODE-android-lite
           path: ${{ steps.find_apk.outputs.apk_path }}
 
       - name: Upload APK to Release
         run: |
           tagName="${{ steps.get_version.outputs.tagName }}"
           apk_path="${{ steps.find_apk.outputs.apk_path }}"
-          apk_name="PHCODE-android.apk"
+          apk_name="PHCODE-android-lite.apk"
           cp "$apk_path" "$apk_name"
-
-          # 先删除旧资产再上传（避免重复）
           gh release delete-asset "$tagName" "$apk_name" --yes 2>/dev/null || true
           gh release upload "$tagName" "$apk_name"
         env:
