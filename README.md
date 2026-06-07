@@ -50,17 +50,26 @@ cph浏览器插件传送数据至phcode
 
 **关于安卓版本**
 
-目前安卓版本有许多bug，clangd大概率不可用，且由于技术原因，使用远端编译，因此也没有调试功能
+安卓版提供两个版本：
 
-katex疑似无法使用
+### Lite 版（PHCODE-android-lite.apk）
+- **引擎**: System WebView（系统自带）
+- **最低安卓版本**: 5.0（API 21）
+- **架构**: 通用（一个 APK 兼容所有设备）
+- **体积**: 较小
+- **说明**: 兼容性好，适合旧设备，但 WASM 性能取决于系统 WebView 版本，本地编译可能较慢
 
-如果无法更新请先备份再卸载后安装，安卓版在v2.5.2+版本存在
+### GeckoView 版（PHCODE-app-*-release.apk）
+- **引擎**: GeckoView（Firefox 同款引擎）
+- **最低安卓版本**: 8.0（API 26）
+- **架构**: 按架构分为 3 个独立 APK
+  - `PHCODE-app-arm64-v8a-release.apk` — 主流现代手机
+  - `PHCODE-app-armeabi-v7a-release.apk` — 老款 32 位 ARM 设备
+  - `PHCODE-app-x86_64-release.apk` — 模拟器 / Intel 设备
+- **体积**: 较大（包含完整 Gecko 渲染引擎）
+- **说明**: WASM 性能更佳，支持本地编译和 clangd，需根据设备架构选择对应 APK
 
-兼容性:
-
-> 安卓5.0+
-
-> 架构：未使用原生库，兼容任何安卓设备
+> 不确定选哪个：2020 年后的大多数手机用 `arm64-v8a`，较旧的手机用 `armeabi-v7a`
 
 ---
 
