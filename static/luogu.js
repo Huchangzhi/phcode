@@ -216,6 +216,11 @@ function showLuoguProblemDialog() {
         modalBody.style.maxHeight = '60vh';
         modalBody.style.overflowY = 'auto';
     }
+    // GeckoView 兼容：自定义触摸滚动
+    if (typeof _enableCustomTouchScroll === 'function') {
+        _enableCustomTouchScroll(modalBody);
+        _enableCustomTouchScroll(modalContent);
+    }
 
     // 创建输入提示
     const inputLabel = document.createElement('label');
@@ -733,6 +738,9 @@ function displayLuoguProblem(problemData) {
     scrollContainer.style.boxSizing = 'border-box';
     scrollContainer.style.touchAction = 'none';
     scrollContainer.setAttribute('data-scroll-container', 'true');
+    if (typeof _enableCustomTouchScroll === 'function') {
+        _enableCustomTouchScroll(scrollContainer);
+    }
 
     // 先添加滚动容器，再添加关闭按钮（确保关闭按钮在最上层）
     problemDisplay.appendChild(scrollContainer);
@@ -1765,6 +1773,9 @@ function displayMarkdownProblem(problemData) {
     scrollContainer.style.padding = '20px';
     scrollContainer.style.boxSizing = 'border-box';
     scrollContainer.style.touchAction = 'none'; // 禁用触摸操作，使用按钮滚动
+    if (typeof _enableCustomTouchScroll === 'function') {
+        _enableCustomTouchScroll(scrollContainer);
+    }
 
     // 为移动端隐藏滚动条
     if (isMobile) {

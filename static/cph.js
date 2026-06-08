@@ -134,6 +134,12 @@ class CPHPlugin {
                 this.showTestCaseView();
             });
         }
+
+        // GeckoView 兼容：自定义触摸滚动
+        const cphContent = document.getElementById('cph-content');
+        if (cphContent && typeof _enableCustomTouchScroll === 'function') {
+            _enableCustomTouchScroll(cphContent);
+        }
     }
 
     // 显示CPH面板
@@ -676,7 +682,12 @@ function initCPHPlugin() {
         // 检查本地存储中的插件状态
         const savedState = localStorage.getItem('cph_plugin_enabled');
         // 默认启用（首次访问时不存在存储值）
-        pluginSwitch.checked = savedState !== null ? savedState === 'true' : true;
+        if (savedState === null) {
+            localStorage.setItem('cph_plugin_enabled', 'true');
+            pluginSwitch.checked = true;
+        } else {
+            pluginSwitch.checked = savedState === 'true';
+        }
         
         pluginSwitch.addEventListener('change', function() {
             // 保存插件状态到本地存储

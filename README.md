@@ -57,7 +57,7 @@ cph浏览器插件传送数据至phcode
 - **最低安卓版本**: 5.0（API 21）
 - **架构**: 通用（一个 APK 兼容所有设备）
 - **体积**: 较小
-- **说明**: 兼容性好，适合旧设备，但 WASM 性能取决于系统 WebView 版本，本地编译可能较慢
+- **说明**: 兼容性好，适合旧设备，本地编译速度取决于系统 WebView，相对较慢
 
 ### GeckoView 版（PHCODE-app-*-release.apk）
 - **引擎**: GeckoView（Firefox 同款引擎）
@@ -67,7 +67,10 @@ cph浏览器插件传送数据至phcode
   - `PHCODE-app-armeabi-v7a-release.apk` — 老款 32 位 ARM 设备
   - `PHCODE-app-x86_64-release.apk` — 模拟器 / Intel 设备
 - **体积**: 较大（包含完整 Gecko 渲染引擎）
-- **说明**: WASM 性能更佳，支持本地编译和 clangd，需根据设备架构选择对应 APK
+- **说明**: 本地编译速度更快（接近桌面 Chrome 水平），需根据设备架构选择对应 APK
+
+> ⚠️ 两个版本均不支持 clangd（代码补全/诊断），Android 上暂无可用方案
+
 
 > 不确定选哪个：2020 年后的大多数手机用 `arm64-v8a`，较旧的手机用 `armeabi-v7a`
 
@@ -77,7 +80,9 @@ cph浏览器插件传送数据至phcode
 
 > 目前插件功能正在改善，正在添加更多的端口，希望大家多多pr
 
-> 目前插件：C++代码补全，洛谷主题库查看，CPH测试点维护
+> 目前插件：C++代码补全（clangd），洛谷主题库查看，CPH测试点维护
+
+> 本地编译：在网页或手机上通过 WASM 在浏览器内本地编译 C++，无需服务器（开关在 **文件 → 首选项**）
 
 
 注：洛谷题目来自https://cdn.luogu.com.cn/problemset-open/latest.ndjson.gz

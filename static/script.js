@@ -245,6 +245,13 @@ const savePreferences = document.getElementById('save-preferences');
 const resetDefaultCode = document.getElementById('reset-default-code');
 const defaultCodeEditor = document.getElementById('default-code-editor');
 
+// 为弹窗添加自定义触摸滚动（GeckoView APZ 兼容）
+const _prefModalContent = document.querySelector('.preferences-modal');
+const _aboutModalContent = document.querySelector('.about-modal');
+const _tutorialModalContent = document.querySelector('.tutorial-modal');
+_enableCustomTouchScroll(_prefModalContent);
+_enableCustomTouchScroll(_aboutModalContent);
+_enableCustomTouchScroll(_tutorialModalContent);
 
 const leftSidebar = document.getElementById('left-sidebar');
 const sidebarToggle = document.getElementById('sidebar-toggle');
@@ -270,6 +277,11 @@ if (typeof window.vfsModule.initVFSModule === 'function') {
     
     window.vfsModule.initVFSModule();
 }
+
+const _terminalContentBody = document.querySelector('.terminal-content-body');
+_enableCustomTouchScroll(vfsContent);
+_enableCustomTouchScroll(pluginCenterContent);
+_enableCustomTouchScroll(_terminalContentBody);
 
 // Create clangd download progress popup if it doesn't exist
 function createClangdDownloadProgress() {
@@ -2103,10 +2115,32 @@ window.PhoiAPI = {
         return await response.json();
     }
 };
-
-
-
 // 首选项功能相关函数
+
+// 为弹窗添加自定义触摸滚动（解决 GeckoView APZ 不识别滚动容器的问题）
+function _enableCustomTouchScroll(container) {
+    if (!container) return;
+    let touchStartY = 0;
+    let touchStartScroll = 0;
+    let touchMoved = false;
+    container.addEventListener('touchstart', function(e) {
+        if (e.targetTouches.length !== 1) return;
+        touchStartY = e.targetTouches[0].pageY;
+        touchStartScroll = container.scrollTop;
+        touchMoved = false;
+    }, { passive: true });
+    container.addEventListener('touchmove', function(e) {
+        if (e.targetTouches.length !== 1) return;
+        const dy = touchStartY - e.targetTouches[0].pageY;
+        if (Math.abs(dy) > 5) {
+            touchMoved = true;
+            container.scrollTop = touchStartScroll + dy;
+            e.preventDefault();
+            e.stopPropagation();
+        }
+    }, { passive: false });
+}
+
 function showPreferencesModal() {
     // 加载当前默认代码到编辑器
     const currentDefaultCode = localStorage.getItem('phoi_defaultCode') || defaultDefaultCode;
@@ -2415,10 +2449,10 @@ function showLocalStorageInfo() {
     buttonContainer.appendChild(okButton);
     modal.appendChild(buttonContainer);
 
+    _enableCustomTouchScroll(modal);
     overlay.appendChild(modal);
     document.body.appendChild(overlay);
 }
-
 
 // 显示 Clangd 语言服务器信息
 function showClangdInfo() {
@@ -2511,6 +2545,7 @@ function showClangdInfo() {
     buttonContainer.appendChild(okButton);
     modal.appendChild(buttonContainer);
 
+    _enableCustomTouchScroll(modal);
     overlay.appendChild(modal);
     document.body.appendChild(overlay);
 }
@@ -2603,6 +2638,7 @@ function showLocalCompileInfo() {
     buttonContainer.appendChild(okButton);
     modal.appendChild(buttonContainer);
 
+    _enableCustomTouchScroll(modal);
     overlay.appendChild(modal);
     document.body.appendChild(overlay);
 }
@@ -3268,6 +3304,7 @@ function showInfoModal(title, content) {
     };
     
     modal.appendChild(header);
+    _enableCustomTouchScroll(body);
     modal.appendChild(body);
     modal.appendChild(footer);
     footer.appendChild(okButton);
@@ -3380,6 +3417,7 @@ function showLocalStorageInfo() {
     buttonContainer.appendChild(okButton);
     modal.appendChild(buttonContainer);
 
+    _enableCustomTouchScroll(modal);
     overlay.appendChild(modal);  // 修复拼写错误
     document.body.appendChild(overlay);
 }

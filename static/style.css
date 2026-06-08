@@ -828,14 +828,18 @@ body { margin: 0; padding: 0; background-color: var(--bg-color); height: 100vh; 
 .about-modal, .preferences-modal {
     width: 80%;
     max-width: 600px;
+    max-height: 80vh;
     background-color: var(--modal-bg);
     border: 1px solid var(--modal-border);
     border-radius: 6px;
     box-shadow: 0 10px 25px var(--modal-shadow);
-    overflow: hidden;
+    overflow-y: auto;
 }
 
 .modal-header {
+    position: sticky;
+    top: 0;
+    z-index: 1;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -887,9 +891,10 @@ body { margin: 0; padding: 0; background-color: var(--bg-color); height: 100vh; 
 
 /* 首选项弹窗特殊样式 */
 .preferences-modal .modal-body {
-    max-height: 400px;
-    overflow-y: auto;
+    touch-action: pan-y;
 }
+
+
 
 .preferences-modal .setting-item {
     margin-bottom: 15px;
