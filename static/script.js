@@ -649,13 +649,21 @@ require(['vs/editor/editor.main'], function() {
         }
     });
 
+    // 跟踪 Monaco 光标位置到 globalCursorPos
+    monacoEditor.onDidChangeCursorPosition((e) => {
+        globalCursorPos = monacoEditor.getModel().getOffsetAt(e.position);
+    });
+
     // Update editor when globalText changes
     window.addEventListener('codeUpdated', () => {
-        if (monacoEditor && monacoEditor.getValue() !== globalText) {
-            monacoEditor.setValue(globalText);
+        if (monacoEditor) {
+            const savedPos = globalCursorPos;
+            if (monacoEditor.getValue() !== globalText) {
+                monacoEditor.setValue(globalText);
+            }
             // Update Monaco editor cursor position if possible
-            if (typeof globalCursorPos !== 'undefined') {
-                const newPosition = monacoEditor.getModel().getPositionAt(globalCursorPos);
+            if (typeof savedPos !== 'undefined') {
+                const newPosition = monacoEditor.getModel().getPositionAt(savedPos);
                 monacoEditor.setPosition(newPosition);
             }
         }
@@ -1315,6 +1323,12 @@ if (toggleBtn) {
         localStorage.setItem('phoi_isFullMode', isFullMode);
 
         if (isFullMode) {
+            // 先显示 Monaco 编辑器容器，再设置内容（display:none 时 setPosition 可能无效）
+            const editorContainer = document.getElementById('editor-container');
+            if (editorContainer) {
+                editorContainer.style.display = 'block';
+            }
+
             if (keyboardContainer) {
                 keyboardContainer.classList.add('hide-keyboard');
             }
@@ -1333,17 +1347,23 @@ if (toggleBtn) {
             syncScroll();
             toggleBtn.textContent = '▲';
 
-            // 同时更新Monaco编辑器
+            // 更新Monaco编辑器并恢复光标（先保存光标位置，避免被onDidChangeCursorPosition覆盖）
+            const savedCursorPos = globalCursorPos;
             if (monacoEditor) {
                 monacoEditor.setValue(globalText);
+                setTimeout(() => {
+                    const newPos = monacoEditor.getModel().getPositionAt(savedCursorPos);
+                    monacoEditor.setPosition(newPos);
+                    monacoEditor.focus();
+                }, 0);
             }
         } else {
             // Before switching to 3-line mode, get latest content from Monaco editor if it exists
             if (monacoEditor) {
                 globalText = monacoEditor.getValue();
+                const monacoPos = monacoEditor.getPosition();
+                globalCursorPos = monacoEditor.getModel().getOffsetAt(monacoPos);
             }
-
-            globalCursorPos = globalText.length; // Set cursor to end of text
 
             if (keyboardContainer) {
                 keyboardContainer.classList.remove('hide-keyboard');
@@ -1358,10 +1378,12 @@ if (toggleBtn) {
             renderThreeLines();
         }
 
-        // Show/hide Monaco Editor container based on mode
-        const editorContainer = document.getElementById('editor-container');
-        if (editorContainer) {
-            editorContainer.style.display = isFullMode ? 'block' : 'none';
+        // Show/hide Monaco Editor container (仅在切换到移动模式时隐藏)
+        if (!isFullMode) {
+            const editorContainer = document.getElementById('editor-container');
+            if (editorContainer) {
+                editorContainer.style.display = 'none';
+            }
         }
         
         // 更新编辑器缩放按钮显示状态
@@ -2075,6 +2097,12 @@ window.PhoiAPI = {
                 if (typeof showMessage === 'function') {
                     showMessage(`已打开文件: ${fileName}`, 'user');
                 }
+
+                // 移动端三行模式：刷新视图
+                if (!isFullMode && typeof renderThreeLines === 'function') {
+                    renderThreeLines();
+                }
+                window.dispatchEvent(new CustomEvent('codeUpdated'));
 
                 return true;
             } else {
