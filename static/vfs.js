@@ -1,5 +1,14 @@
 // --- 虚拟文件系统 (VFS) 实现 ---
 
+// 大小写不敏感的文件名查找
+function findFileInList(list, fileName) {
+    const lower = fileName.toLowerCase();
+    return list.find(f => f.toLowerCase() === lower);
+}
+function hasFile(list, fileName) {
+    return !!findFileInList(list, fileName);
+}
+
 // 主题颜色辅助函数
 function getVFSColors() {
     const isLight = document.documentElement.getAttribute('data-theme') === 'light';
@@ -27,7 +36,7 @@ let vfsStructure = null;
 const VFS_STORAGE_KEY = 'phoi_vfs_structure';
 let currentFileName = localStorage.getItem('phoi_currentFileName') || 'new.cpp'; // 当前正在编辑的文件名
 
-// 文件系统管理模式
+// 文件系统管理模式（单个设置项）
 let useNativeFS = localStorage.getItem('phoi_useNativeFS') === 'true';
 
 // 文件系统管理器类
@@ -191,19 +200,202 @@ class FileSystemManager {
   }
 }
 
+// ── Python 本地存储后端 ──────────────────────────────────────
+class StorageBackend {
+    constructor() {
+        this.available = false;
+        this.token = null;
+        this.root = null;
+        this.appSecret = null;
+        // 从 URL query param 读取 app_secret，然后立即从地址栏移除
+        const params = new URLSearchParams(window.location.search);
+        this.appSecret = params.get('app_secret');
+        if (this.appSecret) {
+            params.delete('app_secret');
+            const cleanUrl = window.location.pathname + (params.toString() ? '?' + params.toString() : '') + window.location.hash;
+            history.replaceState(null, '', cleanUrl);
+        }
+    }
+
+    get baseUrl() { return ''; } // 同源，空串
+
+    async checkAvailability() {
+        try {
+            const res = await fetch(`${this.baseUrl}/api/storage/status`);
+            if (!res.ok) return false;
+            const data = await res.json();
+            this.available = data.available === true;
+            this.root = data.hasRoot ? (data.root || null) : null;
+            return this.available;
+        } catch { return false; }
+    }
+
+    async initSession() {
+        try {
+            const res = await fetch(`${this.baseUrl}/api/storage/init`, {
+                method: 'POST',
+                headers: { 'X-PHOI-App-Secret': this.appSecret || '' }
+            });
+            if (!res.ok) {
+                this.available = false; // init 失败（无 app_secret），标记后端不可用
+                return false;
+            }
+            const data = await res.json();
+            this.token = data.token;
+            sessionStorage.setItem('phoi_storage_token', this.token);
+            return true;
+        } catch {
+            this.available = false;
+            return false;
+        }
+    }
+
+    _headers() {
+        return {
+            'Content-Type': 'application/json',
+            'X-PHOI-Storage-Token': this.token
+        };
+    }
+
+    async selectDir() {
+        const res = await fetch(`${this.baseUrl}/api/storage/select-dir`, {
+            method: 'POST', headers: this._headers()
+        });
+        if (!res.ok) return null;
+        const data = await res.json();
+        this.root = data.path;
+        return data.path;
+    }
+
+    async listFiles() {
+        const res = await fetch(`${this.baseUrl}/api/storage/list`, {
+            method: 'POST', headers: this._headers()
+        });
+        if (!res.ok) return [];
+        const data = await res.json();
+        return data.files || [];
+    }
+
+    async readFile(fileName) {
+        const res = await fetch(`${this.baseUrl}/api/storage/read`, {
+            method: 'POST', headers: this._headers(),
+            body: JSON.stringify({ fileName })
+        });
+        if (!res.ok) return null;
+        const data = await res.json();
+        return data.content;
+    }
+
+    async writeFile(fileName, content) {
+        const res = await fetch(`${this.baseUrl}/api/storage/write`, {
+            method: 'POST', headers: this._headers(),
+            body: JSON.stringify({ fileName, content })
+        });
+        return res.ok;
+    }
+
+    async deleteFile(fileName) {
+        const res = await fetch(`${this.baseUrl}/api/storage/delete`, {
+            method: 'POST', headers: this._headers(),
+            body: JSON.stringify({ fileName })
+        });
+        return res.ok;
+    }
+
+    async verifyToken() {
+        try {
+            const res = await fetch(`${this.baseUrl}/api/storage/ping`, {
+                method: 'POST', headers: this._headers()
+            });
+            return res.ok;
+        } catch {
+            return false;
+        }
+    }
+
+    async rememberRoot(path) {
+        try {
+            await fetch(`${this.baseUrl}/api/storage/remember-root`, {
+                method: 'POST', headers: this._headers(),
+                body: JSON.stringify({ path })
+            });
+        } catch { /* 非关键，失败不影响使用 */ }
+    }
+}
+
+// 实例化存储后端
+const storageBackend = new StorageBackend();
+
+/**
+ * 确保存储后端就绪：如果启用了本地存储且后端可用但没有文件夹，弹出选择对话框。
+ * 返回 true 表示可以继续使用后端。
+ */
+async function ensureBackendReady() {
+    if (!useNativeFS || !storageBackend.available || !storageBackend.token) return false;
+    if (storageBackend.root) return true;
+    // 回话恢复：从 localStorage 恢复储存路径
+    const savedRoot = localStorage.getItem('phoi_storage_root');
+    if (savedRoot) {
+        storageBackend.root = savedRoot;
+        await storageBackend.rememberRoot(savedRoot).catch(() => {});
+        return true;
+    }
+    const path = await storageBackend.selectDir();
+    if (!path) {
+        // 用户取消选择，降级到浏览器存储
+        useNativeFS = false;
+        localStorage.setItem('phoi_useNativeFS', 'false');
+        if (typeof showMessage === 'function') {
+            showMessage('未选择文件夹，已回退到浏览器存储', 'system');
+        }
+        return false;
+    }
+    // 记住路径
+    localStorage.setItem('phoi_storage_root', path);
+    await storageBackend.rememberRoot(path);
+    await renderVFS();
+    return true;
+}
+
 // 实例化文件系统管理器
 const fsManager = new FileSystemManager();
 
 // 初始化 VFS 模块
 async function initVFSModule() {
-    // 检查是否启用了本地文件系统但没有权限
-    if (useNativeFS && 'showDirectoryPicker' in window && !fsManager.rootDir) {
-        // 显示权限请求弹窗
-        showPermissionRequestModal();
+    // 如果启用了本地存储，自动检测最佳后端
+    if (useNativeFS) {
+        const backendOk = await storageBackend.checkAvailability();
+        if (backendOk) {
+            const savedToken = sessionStorage.getItem('phoi_storage_token');
+            if (savedToken) {
+                storageBackend.token = savedToken;
+            } else {
+                await storageBackend.initSession();
+            }
+            // 验证 token 是否真的可用（服务器重启后旧 token 会失效）
+            if (storageBackend.token && storageBackend.available) {
+                const valid = await storageBackend.verifyToken();
+                if (!valid) {
+                    // 旧 token 失效（服务器重启），重新申请新 token
+                    storageBackend.token = null;
+                    sessionStorage.removeItem('phoi_storage_token');
+                    await storageBackend.initSession();
+                }
+            }
+        }
+    }
+
+    // 检查是否启用了本地文件系统
+    if (useNativeFS && 'showDirectoryPicker' in window && !fsManager.rootDir && !storageBackend.available) {
+        // 浏览器 FS API 模式
+        showPermissionRequestModal(false);
+    } else if (useNativeFS && storageBackend.available && storageBackend.token && !storageBackend.root) {
+        // Python 后端模式（有后端且有 token，但未选文件夹）
+        showPermissionRequestModal(true);
     } else {
         // 初始化虚拟文件系统
         initializeVFS();
-        renderVFS();
+        await renderVFS();
         setupEventListeners();
         updateCurrentFileNameDisplay();
     }
@@ -211,7 +403,8 @@ async function initVFSModule() {
 
 
 // 显示权限请求弹窗
-function showPermissionRequestModal() {
+function showPermissionRequestModal(backendMode) {
+    backendMode = backendMode === true; // 确保 boolean
     const colors = getVFSColors();
     // 创建遮罩层
     const overlay = document.createElement('div');
@@ -239,97 +432,171 @@ function showPermissionRequestModal() {
     modal.style.width = '80%';
     modal.style.color = colors.text;
 
-    // 添加标题
-    const title = document.createElement('h3');
-    title.textContent = '本地文件系统权限';
-    title.style.color = colors.textWhite;
-    title.style.marginTop = '0';
-    modal.appendChild(title);
+    if (backendMode) {
+        // ── 本地储存后端模式 ─────────────────────────────────
+        const title = document.createElement('h3');
+        title.textContent = '本地储存';
+        title.style.color = colors.textWhite;
+        title.style.marginTop = '0';
+        modal.appendChild(title);
 
-    // 添加说明文字
-    const message = document.createElement('p');
-    message.textContent = '您已启用本地文件系统功能，但尚未授权访问权限。请选择：';
-    message.style.marginBottom = '20px';
-    message.style.lineHeight = '1.5';
-    modal.appendChild(message);
+        const message = document.createElement('p');
+        message.textContent = '已连接到本地储存后端，请选择储存方式：';
+        message.style.marginBottom = '20px';
+        message.style.lineHeight = '1.5';
+        modal.appendChild(message);
 
-    // 创建按钮容器
-    const buttonContainer = document.createElement('div');
-    buttonContainer.style.display = 'flex';
-    buttonContainer.style.flexDirection = 'column';
-    buttonContainer.style.gap = '10px';
+        const buttonContainer = document.createElement('div');
+        buttonContainer.style.display = 'flex';
+        buttonContainer.style.flexDirection = 'column';
+        buttonContainer.style.gap = '10px';
 
-    // 授权按钮
-    const grantPermissionBtn = document.createElement('button');
-    grantPermissionBtn.textContent = '授权本地文件访问';
-    grantPermissionBtn.style.backgroundColor = colors.btnPrimary;
-    grantPermissionBtn.style.color = 'white';
-    grantPermissionBtn.style.border = 'none';
-    grantPermissionBtn.style.padding = '10px 20px';
-    grantPermissionBtn.style.borderRadius = '4px';
-    grantPermissionBtn.style.cursor = 'pointer';
-    grantPermissionBtn.style.fontSize = '14px';
-    grantPermissionBtn.onclick = function() {
-        // 使用setTimeout确保弹窗关闭操作在下一个事件循环执行
-        setTimeout(() => {
-            // 关闭弹窗
+        const selectFolderBtn = document.createElement('button');
+        selectFolderBtn.textContent = '选择本地文件夹';
+        selectFolderBtn.style.backgroundColor = colors.btnPrimary;
+        selectFolderBtn.style.color = 'white';
+        selectFolderBtn.style.border = 'none';
+        selectFolderBtn.style.padding = '10px 20px';
+        selectFolderBtn.style.borderRadius = '4px';
+        selectFolderBtn.style.cursor = 'pointer';
+        selectFolderBtn.style.fontSize = '14px';
+        selectFolderBtn.onclick = async function() {
             if (document.body.contains(overlay)) {
                 document.body.removeChild(overlay);
             }
-            
-            // 然后异步尝试获取权限
-            requestNativeFSPermission()
-                .then(() => {
-                    // 成功获取权限后，重新初始化文件系统
-                    initializeVFS();
-                    renderVFS();
-                    setupEventListeners();
-                    updateCurrentFileNameDisplay();
-                })
-                .catch(error => {
-                    console.error('获取本地文件系统权限失败:', error);
-                    if (window.PhoiDialog) {
-                        PhoiDialog.alert('获取文件访问权限失败: ' + error.message);
-                    } else {
-                        alert('获取文件访问权限失败: ' + error.message);
-                    }
+            const ready = await ensureBackendReady();
+            if (ready) {
+                initializeVFS();
+                await renderVFS();
+                setupEventListeners();
+                updateCurrentFileNameDisplay();
+            } else {
+                // ensureBackendReady 已把 useNativeFS 设为 false，初始化 VFS
+                initializeVFS();
+                await renderVFS();
+                setupEventListeners();
+                updateCurrentFileNameDisplay();
+            }
+        };
 
-                    // 即使失败也要确保界面更新
-                    initializeVFS();
-                    renderVFS();
-                    setupEventListeners();
-                    updateCurrentFileNameDisplay();
-                });
-        }, 0);
-    };
+        const useVirtualFSBtn = document.createElement('button');
+        useVirtualFSBtn.textContent = '返回在线储存';
+        useVirtualFSBtn.style.backgroundColor = colors.btnSecondary;
+        useVirtualFSBtn.style.color = 'white';
+        useVirtualFSBtn.style.border = 'none';
+        useVirtualFSBtn.style.padding = '10px 20px';
+        useVirtualFSBtn.style.borderRadius = '4px';
+        useVirtualFSBtn.style.cursor = 'pointer';
+        useVirtualFSBtn.style.fontSize = '14px';
+        useVirtualFSBtn.onclick = async function() {
+            useNativeFS = false;
+            localStorage.setItem('phoi_useNativeFS', 'false');
+            if (document.body.contains(overlay)) {
+                document.body.removeChild(overlay);
+            }
+            initializeVFS();
+            await renderVFS();
+            setupEventListeners();
+            updateCurrentFileNameDisplay();
+        };
 
-    // 返回虚拟文件系统按钮
-    const useVirtualFSBtn = document.createElement('button');
-    useVirtualFSBtn.textContent = '返回虚拟文件系统';
-    useVirtualFSBtn.style.backgroundColor = colors.btnSecondary;
-    useVirtualFSBtn.style.color = 'white';
-    useVirtualFSBtn.style.border = 'none';
-    useVirtualFSBtn.style.padding = '10px 20px';
-    useVirtualFSBtn.style.borderRadius = '4px';
-    useVirtualFSBtn.style.cursor = 'pointer';
-    useVirtualFSBtn.style.fontSize = '14px';
-    useVirtualFSBtn.onclick = function() {
-        // 禁用本地文件系统，使用虚拟文件系统
-        useNativeFS = false;
-        localStorage.setItem('phoi_useNativeFS', 'false');
-        // 关闭弹窗并初始化虚拟文件系统
-        if (document.body.contains(overlay)) {
-            document.body.removeChild(overlay);
-        }
-        initializeVFS();
-        renderVFS();
-        setupEventListeners();
-        updateCurrentFileNameDisplay();
-    };
+        buttonContainer.appendChild(selectFolderBtn);
+        buttonContainer.appendChild(useVirtualFSBtn);
+        modal.appendChild(buttonContainer);
+    } else {
+        // ── 浏览器 FS API 模式（原版逻辑）─────────────────
+        // 添加标题
+        const title = document.createElement('h3');
+        title.textContent = '本地文件系统权限';
+        title.style.color = colors.textWhite;
+        title.style.marginTop = '0';
+        modal.appendChild(title);
 
-    buttonContainer.appendChild(grantPermissionBtn);
-    buttonContainer.appendChild(useVirtualFSBtn);
-    modal.appendChild(buttonContainer);
+        // 添加说明文字
+        const message = document.createElement('p');
+        message.textContent = '您已启用本地文件系统功能，但尚未授权访问权限。请选择：';
+        message.style.marginBottom = '20px';
+        message.style.lineHeight = '1.5';
+        modal.appendChild(message);
+
+        // 创建按钮容器
+        const buttonContainer = document.createElement('div');
+        buttonContainer.style.display = 'flex';
+        buttonContainer.style.flexDirection = 'column';
+        buttonContainer.style.gap = '10px';
+
+        // 授权按钮
+        const grantPermissionBtn = document.createElement('button');
+        grantPermissionBtn.textContent = '授权本地文件访问';
+        grantPermissionBtn.style.backgroundColor = colors.btnPrimary;
+        grantPermissionBtn.style.color = 'white';
+        grantPermissionBtn.style.border = 'none';
+        grantPermissionBtn.style.padding = '10px 20px';
+        grantPermissionBtn.style.borderRadius = '4px';
+        grantPermissionBtn.style.cursor = 'pointer';
+        grantPermissionBtn.style.fontSize = '14px';
+        grantPermissionBtn.onclick = function() {
+            // 使用setTimeout确保弹窗关闭操作在下一个事件循环执行
+            setTimeout(() => {
+                // 关闭弹窗
+                if (document.body.contains(overlay)) {
+                    document.body.removeChild(overlay);
+                }
+                
+                // 然后异步尝试获取权限
+                requestNativeFSPermission()
+                    .then(() => {
+                        // 成功获取权限后，重新初始化文件系统
+                        initializeVFS();
+                        renderVFS();
+                        setupEventListeners();
+                        updateCurrentFileNameDisplay();
+                    })
+                    .catch(error => {
+                        console.error('获取本地文件系统权限失败:', error);
+                        if (window.PhoiDialog) {
+                            PhoiDialog.alert('获取文件访问权限失败: ' + error.message);
+                        } else {
+                            alert('获取文件访问权限失败: ' + error.message);
+                        }
+
+                        // 即使失败也要确保界面更新
+                        initializeVFS();
+                        renderVFS();
+                        setupEventListeners();
+                        updateCurrentFileNameDisplay();
+                    });
+            }, 0);
+        };
+
+        // 返回虚拟文件系统按钮
+        const useVirtualFSBtn = document.createElement('button');
+        useVirtualFSBtn.textContent = '返回虚拟文件系统';
+        useVirtualFSBtn.style.backgroundColor = colors.btnSecondary;
+        useVirtualFSBtn.style.color = 'white';
+        useVirtualFSBtn.style.border = 'none';
+        useVirtualFSBtn.style.padding = '10px 20px';
+        useVirtualFSBtn.style.borderRadius = '4px';
+        useVirtualFSBtn.style.cursor = 'pointer';
+        useVirtualFSBtn.style.fontSize = '14px';
+        useVirtualFSBtn.onclick = async function() {
+            // 禁用本地文件系统，使用虚拟文件系统
+            useNativeFS = false;
+            localStorage.setItem('phoi_useNativeFS', 'false');
+            // 关闭弹窗并初始化虚拟文件系统
+            if (document.body.contains(overlay)) {
+                document.body.removeChild(overlay);
+            }
+            initializeVFS();
+            await renderVFS();
+            setupEventListeners();
+            updateCurrentFileNameDisplay();
+        };
+
+        buttonContainer.appendChild(grantPermissionBtn);
+        buttonContainer.appendChild(useVirtualFSBtn);
+        modal.appendChild(buttonContainer);
+    }
 
     overlay.appendChild(modal);
     document.body.appendChild(overlay);
@@ -428,7 +695,13 @@ async function openFile(filePath) {
     // 检查文件是否存在
     let fileExists = false;
     
-    if (useNativeFS && 'showDirectoryPicker' in window) {
+    if (useNativeFS && storageBackend.available && storageBackend.root) {
+        // 通过 Python 后端检查
+        try {
+            const list = await storageBackend.listFiles();
+            fileExists = hasFile(list, fileName);
+        } catch { fileExists = false; }
+    } else if (useNativeFS && 'showDirectoryPicker' in window) {
         // 检查本地文件系统
         try {
             if (!fsManager.rootDir) {
@@ -438,13 +711,17 @@ async function openFile(filePath) {
                 fileExists = false;
             } else {
                 const fileList = await fsManager.getFileList();
-                fileExists = fileList.includes(fileName);
+                fileExists = hasFile(fileList, fileName);
             }
         } catch (error) {
             console.error('检查本地文件存在性失败:', error);
         }
     } else {
         // 检查虚拟文件系统
+        fileExists = vfsStructure['/'].children[fileName] && vfsStructure['/'].children[fileName].type === 'file';
+    }
+
+    if (!fileExists) {
         fileExists = vfsStructure['/'].children[fileName] && vfsStructure['/'].children[fileName].type === 'file';
     }
 
@@ -475,7 +752,45 @@ async function renderVFSDirectory(path, parentElement) {
 
     let files = [];
 
-    if (useNativeFS && 'showDirectoryPicker' in window) {
+    // Python 后端优先
+    if (useNativeFS && storageBackend.available) {
+        if (storageBackend.root) {
+            try {
+                files = await storageBackend.listFiles();
+            } catch (e) {
+                console.warn('存储后端列表失败:', e);
+            }
+        } else {
+            // 后端可用但未选文件夹 → 显示可点击的选择提示
+            const container = document.createElement('div');
+            container.className = 'vfs-subfolder';
+            container.style.paddingLeft = '16px';
+
+            const selectItem = document.createElement('div');
+            selectItem.className = 'vfs-file';
+            selectItem.style.color = colors.textWarning;
+            selectItem.style.display = 'flex';
+            selectItem.style.justifyContent = 'space-between';
+            selectItem.style.alignItems = 'center';
+            selectItem.style.padding = '5px';
+            selectItem.style.cursor = 'pointer';
+            selectItem.style.fontStyle = 'italic';
+
+            const selectText = document.createElement('span');
+            selectText.textContent = '（点击选择本地文件夹）';
+            selectText.style.flexGrow = '1';
+            selectItem.appendChild(selectText);
+            selectItem.addEventListener('click', async function(e) {
+                e.stopPropagation();
+                const ready = await ensureBackendReady();
+                if (ready) renderVFS();
+            });
+
+            container.appendChild(selectItem);
+            parentElement.appendChild(container);
+            return;
+        }
+    } else if (useNativeFS && 'showDirectoryPicker' in window) {
         // 使用本地文件系统
         try {
             if (!fsManager.rootDir) {
@@ -596,6 +911,18 @@ async function deleteFile(fileName) {
     }
 
     if (shouldDelete) {
+        // 后端优先
+        if (useNativeFS && storageBackend.available && await ensureBackendReady()) {
+            if (await storageBackend.deleteFile(fileName)) {
+                await renderVFS();
+                if (typeof showMessage === 'function') {
+                    showMessage(`文件 "${fileName}" 已删除`, 'user');
+                }
+                return;
+            }
+            console.warn('存储后端删除失败，降级');
+        }
+
         if (useNativeFS && 'showDirectoryPicker' in window) {
             // 使用本地文件系统
             try {
@@ -603,7 +930,7 @@ async function deleteFile(fileName) {
                     await fsManager.requestDirectoryAccess();
                 }
                 await fsManager.deleteFile(fileName);
-                renderVFS(); // 重新渲染文件列表
+                await renderVFS(); // 重新渲染文件列表
                 
                 // 发送消息
                 if (typeof showMessage === 'function') {
@@ -619,7 +946,7 @@ async function deleteFile(fileName) {
             delete vfsStructure['/'].children[fileName];
 
             saveVFS();
-            renderVFS();
+            await renderVFS();
 
             // 发送消息
             if (typeof showMessage === 'function') {
@@ -632,33 +959,56 @@ async function deleteFile(fileName) {
 }
 
 // 切换虚拟文件系统面板显示状态
-function toggleVFSPanel() {
+async function toggleVFSPanel() {
     if (!window.vfsPanel || !window.sidebarToggle) return; // 如果元素不存在则返回
 
     if (window.vfsPanel.style.display === 'none' || window.vfsPanel.style.display === '') {
         window.vfsPanel.style.display = 'flex';
-        // 添加CSS类来表示面板打开状态
         window.sidebarToggle.classList.add('vfs-open');
+        await renderVFS(); // 确保文件列表最新
     } else {
         window.vfsPanel.style.display = 'none';
-        // 移除CSS类来表示面板关闭状态
         window.sidebarToggle.classList.remove('vfs-open');
     }
 }
 
 // 上传文件到虚拟文件系统
-function uploadFile() {
+async function uploadFile() {
     const input = document.createElement('input');
     input.type = 'file';
-    input.onchange = event => {
+    input.onchange = async event => {
         const file = event.target.files[0];
         const reader = new FileReader();
 
-        reader.onload = function(e) {
+        reader.onload = async function(e) {
             const content = e.target.result;
             const fileName = file.name;
 
-            // 将文件添加到根目录
+            // 后端优先
+            if (await ensureBackendReady()) {
+                if (await storageBackend.writeFile(fileName, content)) {
+                    await renderVFS();
+                    openFile(fileName);
+                    return;
+                }
+                console.warn('存储后端上传失败，降级');
+            }
+
+            if (useNativeFS && 'showDirectoryPicker' in window) {
+                try {
+                    if (!fsManager.rootDir) {
+                        await fsManager.requestDirectoryAccess();
+                    }
+                    await fsManager.createFile(fileName, content);
+                    await renderVFS();
+                    openFile(fileName);
+                    return;
+                } catch (error) {
+                    console.error('本地文件系统上传失败:', error);
+                }
+            }
+
+            // 将文件添加到虚拟文件系统
             vfsStructure['/'].children[fileName] = {
                 type: 'file',
                 name: fileName,
@@ -666,7 +1016,7 @@ function uploadFile() {
             };
 
             saveVFS();
-            renderVFS();
+            await renderVFS();
 
             // 自动打开刚上传的文件
             openFile(fileName);
@@ -719,6 +1069,19 @@ async function saveCurrentFileAs() {
     
     if (!fileName) return;
 
+    // 后端优先
+    if (await ensureBackendReady()) {
+        if (await storageBackend.writeFile(fileName, currentContent)) {
+            if (window.PhoiAPI.setCurrentFileName) {
+                window.PhoiAPI.setCurrentFileName(fileName);
+            }
+            await renderVFS();
+            showMessage(`文件已另存为: ${fileName}`, 'user');
+            return;
+        }
+        console.warn('存储后端另存为失败，降级');
+    }
+
     // 将当前代码保存为新文件
     vfsStructure['/'].children[fileName] = {
         type: 'file',
@@ -727,7 +1090,7 @@ async function saveCurrentFileAs() {
     };
 
     saveVFS();
-    renderVFS();
+    await renderVFS();
 
     // 通知主应用更新当前文件名
     if (window.PhoiAPI.setCurrentFileName) {
@@ -753,6 +1116,23 @@ async function newFile() {
     
     if (!fileName) return;
 
+    // 后端优先
+    if (await ensureBackendReady()) {
+        const list = await storageBackend.listFiles();
+        const existingFile = findFileInList(list, fileName);
+        if (existingFile) {
+            openFile(existingFile);
+            return;
+        }
+        const defaultCode = localStorage.getItem('phoi_defaultCode') || `#include <iostream>\n\nusing namespace std;\n\nint main() {\n\tcout << "Hello Ph Code" << endl;\n\treturn 0;\n}`;
+        if (await storageBackend.writeFile(fileName, defaultCode)) {
+            await renderVFS();
+            openFile(fileName);
+            return;
+        }
+        console.warn('存储后端创建文件失败，降级');
+    }
+
     if (useNativeFS && 'showDirectoryPicker' in window) {
         // 使用本地文件系统
         try {
@@ -761,7 +1141,7 @@ async function newFile() {
             }
             // 检查文件是否已存在
             const fileList = await fsManager.getFileList();
-            if (fileList.includes(fileName)) {
+            if (hasFile(fileList, fileName)) {
                 if (window.PhoiDialog) {
                     await PhoiDialog.alert('文件已存在！');
                 } else {
@@ -776,7 +1156,7 @@ async function newFile() {
             // 创建新文件
             await fsManager.createFile(fileName, defaultCode);
 
-            renderVFS(); // 重新渲染文件列表
+            await renderVFS(); // 重新渲染文件列表
 
             // 自动打开新创建的文件
             openFile(fileName);
@@ -806,7 +1186,7 @@ async function newFile() {
         };
 
         saveVFS();
-        renderVFS();
+        await renderVFS();
 
         // 自动打开新创建的文件
         openFile(fileName);
@@ -817,6 +1197,13 @@ async function newFile() {
 // 保存文件到虚拟文件系统
 async function saveFileToVFS(fileName, content) {
     if (!fileName) return;
+
+    // 后端优先：如果启用了本地存储且 Python 后端可用
+    if (useNativeFS && storageBackend.available && await ensureBackendReady()) {
+        if (await storageBackend.writeFile(fileName, content)) return;
+        // 写入失败，降级
+        console.warn('存储后端写入失败，降级');
+    }
 
     if (useNativeFS && 'showDirectoryPicker' in window) {
         // 使用本地文件系统
@@ -864,6 +1251,13 @@ async function saveFileToVFS(fileName, content) {
 
 // 获取文件内容
 async function getFileContent(fileName) {
+    // 后端优先
+    if (useNativeFS && storageBackend.available && await ensureBackendReady()) {
+        const content = await storageBackend.readFile(fileName);
+        if (content !== null) return content;
+        console.warn('存储后端读取失败，降级');
+    }
+
     if (useNativeFS && 'showDirectoryPicker' in window) {
         // 使用本地文件系统
         try {
@@ -913,26 +1307,43 @@ async function getFileContent(fileName) {
 
 // 创建新文件
 async function createNewFile(fileName, content = '') {
+    const defaultCode = localStorage.getItem('phoi_defaultCode') || `#include <iostream>\n\nusing namespace std;\n\nint main() {\n\tcout << "Hello Ph Code" << endl;\n\treturn 0;\n}`;
+    const fileContent = content || defaultCode;
+
+    // 后端优先
+    if (useNativeFS && storageBackend.available && await ensureBackendReady()) {
+        const list = await storageBackend.listFiles();
+        const existingFile = findFileInList(list, fileName);
+        if (existingFile) {
+            return PhoiAPI_openFile(existingFile);
+        }
+        if (await storageBackend.writeFile(fileName, fileContent)) {
+            await renderVFS();
+            return PhoiAPI_openFile(fileName);
+        }
+        console.warn('存储后端创建文件失败，降级');
+    }
+
     if (useNativeFS && 'showDirectoryPicker' in window) {
         // 使用本地文件系统
         try {
             if (!fsManager.rootDir) {
                 await fsManager.requestDirectoryAccess();
             }
-            const defaultCode = localStorage.getItem('phoi_defaultCode') || `#include <iostream>\n\nusing namespace std;\n\nint main() {\n\tcout << "Hello Ph Code" << endl;\n\treturn 0;\n}`;
-            const fileContent = content || defaultCode;
+            const fileList = await fsManager.getFileList();
+            const existingFile = findFileInList(fileList, fileName);
+            if (existingFile) {
+                return PhoiAPI_openFile(existingFile);
+            }
 
             await fsManager.createFile(fileName, fileContent);
-            return openFile(fileName);
+            return PhoiAPI_openFile(fileName);
         } catch (error) {
             console.error('在本地文件系统中创建文件失败:', error);
-            // 如果是权限错误，自动回退到虚拟文件系统
             if (error.name === 'NotAllowedError' || error.name === 'SecurityError') {
                 fallbackToVirtualFS(error.message);
-                // 并使用虚拟文件系统创建文件
-                useNativeFS = false; // 临时禁用本地文件系统标志
+                useNativeFS = false;
             } else {
-                // 其他错误，回退到虚拟文件系统
                 console.log('由于错误，回退到虚拟文件系统');
                 useNativeFS = false;
                 localStorage.setItem('phoi_useNativeFS', 'false');
@@ -941,17 +1352,12 @@ async function createNewFile(fileName, content = '') {
     }
 
     // 使用虚拟文件系统
-    // 检查文件是否已存在
-    if (vfsStructure['/'].children[fileName]) {
-        console.warn(`文件 ${fileName} 已存在`);
-        return false;
+    const lowerName = fileName.toLowerCase();
+    const existingVFS = Object.keys(vfsStructure['/'].children).find(k => k.toLowerCase() === lowerName);
+    if (existingVFS) {
+        return PhoiAPI_openFile(existingVFS);
     }
 
-    // 使用提供的内容或默认代码创建文件
-    const defaultCode = localStorage.getItem('phoi_defaultCode') || `#include <iostream>\n\nusing namespace std;\n\nint main() {\n\tcout << "Hello Ph Code" << endl;\n\treturn 0;\n}`;
-    const fileContent = content || defaultCode;
-
-    // 创建新文件
     vfsStructure['/'].children[fileName] = {
         type: 'file',
         name: fileName,
@@ -959,14 +1365,28 @@ async function createNewFile(fileName, content = '') {
     };
 
     saveVFS();
-    renderVFS();
+    await renderVFS();
+    return PhoiAPI_openFile(fileName);
+}
 
-    // 自动打开新创建的文件
+function PhoiAPI_openFile(fileName) {
+    if (typeof window.PhoiAPI !== 'undefined' && typeof window.PhoiAPI.openFile === 'function') {
+        return window.PhoiAPI.openFile(fileName);
+    }
     return openFile(fileName);
 }
 
 // 获取所有文件列表
 async function getFileList() {
+    // 后端优先
+    if (useNativeFS && storageBackend.available && await ensureBackendReady()) {
+        try {
+            return await storageBackend.listFiles();
+        } catch {
+            console.warn('存储后端列表失败，降级');
+        }
+    }
+
     if (useNativeFS && 'showDirectoryPicker' in window) {
         // 使用本地文件系统
         try {
@@ -1044,7 +1464,7 @@ async function requestNativeFSPermission() {
 }
 
 // 自动回退到虚拟文件系统
-function fallbackToVirtualFS(errorMessage = '') {
+async function fallbackToVirtualFS(errorMessage = '') {
     // 禁用本地文件系统，使用虚拟文件系统
     useNativeFS = false;
     localStorage.setItem('phoi_useNativeFS', 'false');
@@ -1057,7 +1477,7 @@ function fallbackToVirtualFS(errorMessage = '') {
         initializeVFS();
     }
     if (typeof renderVFS === 'function') {
-        renderVFS();
+        await renderVFS();
     }
     if (typeof setupEventListeners === 'function') {
         setupEventListeners();
@@ -1132,6 +1552,7 @@ if (typeof window !== 'undefined') {
         getFileContent,
         createNewFile,
         getFileList,
+        getStorageBackend: function() { return storageBackend; },
         getCurrentFileName: function() {
             return currentFileName;
         },

@@ -1390,18 +1390,33 @@ async function transferProblemToCPH(problemData) {
 // 创建并打开cpp文件
 async function createAndOpenCppFile(fileName) {
     // 使用PhoiAPI创建和打开文件
-    if (window.PhoiAPI) {
+    if (!window.PhoiAPI) {
+        console.error('PhoiAPI 未初始化');
+        if (typeof showMessage === 'function') {
+            showMessage('PhoiAPI 未初始化，无法创建文件', 'error');
+        }
+        return;
+    }
+    try {
         // 检查文件是否已存在
         const fileList = await window.PhoiAPI.getFileList();
-        if (fileList.includes(fileName)) {
+        const lower = fileName.toLowerCase();
+        const existingFile = fileList.find(f => f.toLowerCase() === lower);
+        if (existingFile) {
             // 文件已存在，直接打开
             await window.PhoiAPI.openFile(fileName);
         } else {
             // 文件不存在，创建新文件并打开
-            await window.PhoiAPI.createNewFile(fileName);
+            const result = await window.PhoiAPI.createNewFile(fileName);
+            if (!result) {
+                throw new Error('PhoiAPI.createNewFile 返回失败');
+            }
         }
-    } else {
-        console.error('PhoiAPI 未初始化');
+    } catch (err) {
+        console.error('创建/打开文件失败:', err);
+        if (typeof showMessage === 'function') {
+            showMessage('创建文件失败: ' + err.message, 'error');
+        }
     }
 }
 

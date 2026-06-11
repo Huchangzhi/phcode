@@ -747,8 +747,10 @@ window.handleCompetitiveCompanionData = async function(data) {
         // 使用PhoiAPI创建和打开文件
         if (window.PhoiAPI) {
             const fileList = await window.PhoiAPI.getFileList();
-            if (fileList.includes(filename)) {
-                await window.PhoiAPI.openFile(filename);
+            const lower = filename.toLowerCase();
+            const existingFile = fileList.find(f => f.toLowerCase() === lower);
+            if (existingFile) {
+                await window.PhoiAPI.openFile(existingFile);
             } else {
                 const defaultCode = localStorage.getItem('phoi_defaultCode') ||
                     `#include <iostream>\n\nusing namespace std;\n\nint main() {\n\tcout << "Hello Ph Code" << endl;\n\treturn 0;\n}`;

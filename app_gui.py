@@ -1,5 +1,6 @@
 import sys
 import os
+import json
 import gzip
 import threading
 import subprocess
@@ -7,6 +8,7 @@ import requests
 import socket
 import random
 import string
+import secrets
 from flask import Flask, render_template, request, jsonify
 import urllib.parse
 import re
@@ -355,9 +357,36 @@ class PHCodeServer:
         self.companion_server_thread = None
         self.companion_is_running = False
 
+        # 本地存储后端
+        self.app_secret = secrets.token_hex(16)  # WebView 启动时通过 URL 传入
+        self.storage_tokens: set[str] = set()
+        self.storage_root: str | None = None
+        self._load_storage_config()  # 恢复上次的文件夹路径
+
         self.setup_routes()
         self.compiler_path = self._get_compiler_path()  # 自动获取编译器路径
         self.gdb_path = self._get_gdb_path()  # 自动获取 GDB 路径
+
+    def _save_storage_config(self):
+        """将储存配置写入文件，实现跨重启持久化"""
+        try:
+            config_dir = os.path.dirname(os.path.abspath(__file__))
+            config_path = os.path.join(config_dir, 'storage_config.json')
+            with open(config_path, 'w', encoding='utf-8') as f:
+                json.dump({'root': self.storage_root}, f)
+        except:
+            pass
+
+    def _load_storage_config(self):
+        """启动时读取持久化的储存配置"""
+        try:
+            config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'storage_config.json')
+            if os.path.exists(config_path):
+                with open(config_path, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                    self.storage_root = data.get('root')
+        except:
+            pass
 
     def _get_gdb_path(self):
         """获取 GDB 路径，从 exe 同级目录查找 w64devkit 或系统 PATH"""
@@ -650,6 +679,152 @@ class PHCodeServer:
                     'X-Accel-Buffering': 'no'
                 }
             )
+
+        # ── 本地存储后端 API ──────────────────────────────────────────
+
+        def _require_storage_token(fn):
+            """装饰器：验证存储会话 token"""
+            from functools import wraps
+            @wraps(fn)
+            def wrapper(*args, **kwargs):
+                token = request.headers.get('X-PHOI-Storage-Token', '')
+                if not token or token not in self.storage_tokens:
+                    return jsonify({'error': 'forbidden'}), 403
+                return fn(*args, **kwargs)
+            return wrapper
+
+        @self.app.route('/api/storage/status', methods=['GET'])
+        def api_storage_status():
+            """检测后端是否可用"""
+            return jsonify({
+                'available': True,
+                'root': self.storage_root,
+                'hasRoot': self.storage_root is not None,
+                'hasToken': len(self.storage_tokens) > 0
+            })
+
+        @self.app.route('/api/storage/init', methods=['POST'])
+        def api_storage_init():
+            """初始化存储会话，返回 token"""
+            # 验证 app_secret：只有 WebView（携 URL 中的 secret）才能申请
+            client_secret = request.headers.get('X-PHOI-App-Secret', '')
+            if not client_secret or client_secret != self.app_secret:
+                return jsonify({'error': 'forbidden'}), 403
+            token = secrets.token_hex(32)
+            self.storage_tokens.add(token)
+            return jsonify({'token': token})
+
+        @self.app.route('/api/storage/ping', methods=['POST'])
+        @_require_storage_token
+        def api_storage_ping():
+            """验证 token 是否有效（不需要 root）"""
+            return jsonify({'ok': True})
+
+        @self.app.route('/api/storage/select-dir', methods=['POST'])
+        @_require_storage_token
+        def api_storage_select_dir():
+            """打开文件夹选择对话框"""
+            try:
+                import tkinter as tk
+                from tkinter import filedialog
+                root = tk.Tk()
+                root.withdraw()
+                root.attributes('-topmost', True)
+                folder = filedialog.askdirectory(title='选择代码存储文件夹')
+                root.destroy()
+                if folder:
+                    self.storage_root = folder
+                    self._save_storage_config()
+                    return jsonify({'path': folder})
+                return jsonify({'error': 'cancelled'}), 400
+            except Exception as e:
+                return jsonify({'error': str(e)}), 500
+
+        @self.app.route('/api/storage/remember-root', methods=['POST'])
+        @_require_storage_token
+        def api_storage_remember_root():
+            """前端通知服务端记住路径（跨重启持久化）"""
+            data = request.json
+            folder = data.get('path', '')
+            if folder and os.path.isdir(folder):
+                self.storage_root = folder
+                self._save_storage_config()
+                return jsonify({'success': True})
+            return jsonify({'error': 'invalid path'}), 400
+
+        @self.app.route('/api/storage/list', methods=['POST'])
+        @_require_storage_token
+        def api_storage_list():
+            """列出存储目录中的 .cpp/.c/.h 文件"""
+            if not self.storage_root:
+                return jsonify({'error': 'no root'}), 400
+            try:
+                files = []
+                for f in os.listdir(self.storage_root):
+                    fp = os.path.join(self.storage_root, f)
+                    if os.path.isfile(fp) and any(f.endswith(ext) for ext in ('.cpp','.c','.h','.hpp','.cxx','.cc')):
+                        files.append(f)
+                return jsonify({'files': sorted(files)})
+            except Exception as e:
+                return jsonify({'error': str(e)}), 500
+
+        @self.app.route('/api/storage/read', methods=['POST'])
+        @_require_storage_token
+        def api_storage_read():
+            """读取文件内容"""
+            if not self.storage_root:
+                return jsonify({'error': 'no root'}), 400
+            data = request.json
+            name = data.get('fileName', '')
+            if not name or '..' in name or '/' in name or '\\' in name:
+                return jsonify({'error': 'invalid name'}), 400
+            try:
+                path = os.path.join(self.storage_root, name)
+                with open(path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                return jsonify({'content': content})
+            except FileNotFoundError:
+                return jsonify({'error': 'not found'}), 404
+            except Exception as e:
+                return jsonify({'error': str(e)}), 500
+
+        @self.app.route('/api/storage/write', methods=['POST'])
+        @_require_storage_token
+        def api_storage_write():
+            """写入文件内容"""
+            if not self.storage_root:
+                return jsonify({'error': 'no root'}), 400
+            data = request.json
+            name = data.get('fileName', '')
+            content = data.get('content', '')
+            if not name or '..' in name or '/' in name or '\\' in name:
+                return jsonify({'error': 'invalid name'}), 400
+            try:
+                path = os.path.join(self.storage_root, name)
+                with open(path, 'w', encoding='utf-8') as f:
+                    f.write(content)
+                return jsonify({'success': True})
+            except Exception as e:
+                return jsonify({'error': str(e)}), 500
+
+        @self.app.route('/api/storage/delete', methods=['POST'])
+        @_require_storage_token
+        def api_storage_delete():
+            """删除文件"""
+            if not self.storage_root:
+                return jsonify({'error': 'no root'}), 400
+            data = request.json
+            name = data.get('fileName', '')
+            if not name or '..' in name or '/' in name or '\\' in name:
+                return jsonify({'error': 'invalid name'}), 400
+            try:
+                path = os.path.join(self.storage_root, name)
+                os.remove(path)
+                return jsonify({'success': True})
+            except FileNotFoundError:
+                return jsonify({'error': 'not found'}), 404
+            except Exception as e:
+                return jsonify({'error': str(e)}), 500
 
     def _handle_run_code(self, request):
         """处理代码运行请求"""
@@ -962,8 +1137,8 @@ class PHCodeWebViewApp:
         # 等待服务器启动
         time.sleep(1)
         
-        # 使用 pywebview 创建窗口
-        url = 'http://127.0.0.1:27120'
+        # 使用 pywebview 创建窗口，URL 携带 app_secret
+        url = f'http://127.0.0.1:27120/?app_secret={self.server.app_secret}'
         
         # 获取数据存储路径（在程序同级目录创建 phcode_data 文件夹）
         if getattr(sys, 'frozen', False):

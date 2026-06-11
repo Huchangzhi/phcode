@@ -2051,64 +2051,53 @@ window.PhoiAPI = {
 
     // 打开文件
     openFile: async function(fileName) {
-        // 从虚拟文件系统获取文件内容
-        if (window.vfsModule && typeof window.vfsModule.getFileContent === 'function') {
-            const fileContent = await window.vfsModule.getFileContent(fileName);
+        if (!window.vfsModule || typeof window.vfsModule.getFileContent !== 'function') {
+            return false;
+        }
+        const fileContent = await window.vfsModule.getFileContent(fileName);
 
-            if (fileContent !== null) {
-                // 更新全局文本为文件内容
-                globalText = fileContent;
-                currentFileName = fileName; // 更新当前文件名
+        if (fileContent !== null) {
+            globalText = fileContent;
+            currentFileName = fileName;
 
-                // 更新编辑器内容
-                if (monacoEditor) {
-                    // 监听一次模型内容变化事件，确保渲染完成后再重建断点装饰
-                    const disposable = monacoEditor.onDidChangeModelContent(() => {
-                        // 只触发一次
-                        disposable.dispose();
-                        
-                        // 切换文件后重新创建断点装饰器
-                        if (window.DebugModule && typeof window.DebugModule.recreateBreakpointDecorations === 'function') {
-                            window.DebugModule.recreateBreakpointDecorations();
-                        }
-                    });
-                    
-                    monacoEditor.setValue(globalText);
-                }
+            if (monacoEditor) {
+                const disposable = monacoEditor.onDidChangeModelContent(() => {
+                    disposable.dispose();
+                    if (window.DebugModule && typeof window.DebugModule.recreateBreakpointDecorations === 'function') {
+                        window.DebugModule.recreateBreakpointDecorations();
+                    }
+                });
 
-                // 更新顶部菜单栏中显示的当前文件名
-                const currentFileNameElement = document.getElementById('current-file-name');
-                if (currentFileNameElement) {
-                    currentFileNameElement.textContent = currentFileName;
-                }
-
-                // 保存当前文件名到本地存储
-                localStorage.setItem('phoi_currentFileName', currentFileName);
-
-                // 关闭虚拟文件系统面板
-                if (window.vfsPanel) {
-                    window.vfsPanel.style.display = 'none';
-                }
-                if (window.sidebarToggle) {
-                    window.sidebarToggle.classList.remove('vfs-open');
-                }
-
-                // 显示提示信息
-                if (typeof showMessage === 'function') {
-                    showMessage(`已打开文件: ${fileName}`, 'user');
-                }
-
-                // 移动端三行模式：刷新视图
-                if (!isFullMode && typeof renderThreeLines === 'function') {
-                    renderThreeLines();
-                }
-                window.dispatchEvent(new CustomEvent('codeUpdated'));
-
-                return true;
-            } else {
-                console.error(`文件 ${fileName} 不存在`);
-                return false;
+                monacoEditor.setValue(globalText);
             }
+
+            const currentFileNameElement = document.getElementById('current-file-name');
+            if (currentFileNameElement) {
+                currentFileNameElement.textContent = currentFileName;
+            }
+
+            localStorage.setItem('phoi_currentFileName', currentFileName);
+
+            if (window.vfsPanel) {
+                window.vfsPanel.style.display = 'none';
+            }
+            if (window.sidebarToggle) {
+                window.sidebarToggle.classList.remove('vfs-open');
+            }
+
+            if (typeof showMessage === 'function') {
+                showMessage(`已打开文件: ${fileName}`, 'user');
+            }
+
+            if (!isFullMode && typeof renderThreeLines === 'function') {
+                renderThreeLines();
+            }
+            window.dispatchEvent(new CustomEvent('codeUpdated'));
+
+            return true;
+        } else {
+            console.error(`文件 ${fileName} 不存在`);
+            return false;
         }
     },
 
@@ -2117,6 +2106,7 @@ window.PhoiAPI = {
         if (window.vfsModule && typeof window.vfsModule.createNewFile === 'function') {
             return await window.vfsModule.createNewFile(fileName, content);
         }
+        return false;
     },
 
     // 获取所有文件列表
@@ -2394,7 +2384,49 @@ function updateNativeFSStatus() {
             }
         });
     }
-    
+
+    // 后端储存路径显示与更换按钮
+    const storageBackend = window.vfsModule ? window.vfsModule.getStorageBackend() : null;
+    const container = nativeFSEnabledCheckbox ? nativeFSEnabledCheckbox.closest('label') || nativeFSEnabledCheckbox.parentElement : null;
+    if (!container) return;
+
+    // 移除旧的路径 UI（如果有）
+    const oldPathUi = document.getElementById('backend-path-ui');
+    if (oldPathUi) oldPathUi.remove();
+
+    if (storageBackend && storageBackend.available && storageBackend.token) {
+        const pathDiv = document.createElement('div');
+        pathDiv.id = 'backend-path-ui';
+        pathDiv.style.marginTop = '8px';
+        pathDiv.style.marginLeft = '24px';
+        pathDiv.style.fontSize = '12px';
+        pathDiv.style.color = '#888';
+
+        const pathText = document.createElement('span');
+        pathText.textContent = storageBackend.root || '（未选择文件夹）';
+        pathText.style.marginRight = '8px';
+        pathDiv.appendChild(pathText);
+
+        const changeBtn = document.createElement('button');
+        changeBtn.textContent = '更换文件夹';
+        changeBtn.style.fontSize = '12px';
+        changeBtn.style.padding = '2px 8px';
+        changeBtn.style.cursor = 'pointer';
+        changeBtn.onclick = async function() {
+            const path = await storageBackend.selectDir();
+            if (path) {
+                localStorage.setItem('phoi_storage_root', path);
+                await storageBackend.rememberRoot(path);
+                pathText.textContent = path;
+                if (typeof window.vfsModule.renderVFS === 'function') {
+                    window.vfsModule.renderVFS();
+                }
+            }
+        };
+        pathDiv.appendChild(changeBtn);
+
+        container.parentElement.insertBefore(pathDiv, container.nextSibling);
+    }
 }
 
 // 显示本地存储信息
