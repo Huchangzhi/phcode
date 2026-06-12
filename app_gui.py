@@ -367,11 +367,16 @@ class PHCodeServer:
         self.compiler_path = self._get_compiler_path()  # 自动获取编译器路径
         self.gdb_path = self._get_gdb_path()  # 自动获取 GDB 路径
 
+    def _get_storage_dir(self):
+        """获取持久化目录（兼容 PyInstaller，避免 __file__ 指向临时目录）"""
+        if getattr(sys, 'frozen', False):
+            return os.path.dirname(sys.executable)
+        return os.path.dirname(os.path.abspath(__file__))
+
     def _save_storage_config(self):
         """将储存配置写入文件，实现跨重启持久化"""
         try:
-            config_dir = os.path.dirname(os.path.abspath(__file__))
-            config_path = os.path.join(config_dir, 'storage_config.json')
+            config_path = os.path.join(self._get_storage_dir(), 'storage_config.json')
             with open(config_path, 'w', encoding='utf-8') as f:
                 json.dump({'root': self.storage_root}, f)
         except:
@@ -380,7 +385,7 @@ class PHCodeServer:
     def _load_storage_config(self):
         """启动时读取持久化的储存配置"""
         try:
-            config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'storage_config.json')
+            config_path = os.path.join(self._get_storage_dir(), 'storage_config.json')
             if os.path.exists(config_path):
                 with open(config_path, 'r', encoding='utf-8') as f:
                     data = json.load(f)

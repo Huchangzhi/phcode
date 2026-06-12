@@ -248,7 +248,7 @@ class StorageBackend {
                 headers: { 'X-PHOI-App-Secret': this.appSecret || '' }
             });
             if (!res.ok) {
-                this.available = false; // init 失败（无 app_secret），标记后端不可用
+                // 服务器可用但无法获取 session（app_secret 无效），不修改 available
                 return false;
             }
             const data = await res.json();
@@ -256,7 +256,7 @@ class StorageBackend {
             sessionStorage.setItem('phoi_storage_token', this.token);
             return true;
         } catch {
-            this.available = false;
+            // 网络错误，不修改 available（checkAvailability 单独处理服务器可用性）
             return false;
         }
     }
@@ -375,7 +375,13 @@ const fsManager = new FileSystemManager();
 async function initVFSModule() {
     // 如果启用了本地存储，自动检测最佳后端
     if (useNativeFS) {
-        const backendOk = await storageBackend.checkAvailability();
+        // 启动时服务器可能尚未就绪，最多重试 5 次（共约 2.5 秒）
+        let backendOk = false;
+        for (let i = 0; i < 5; i++) {
+            backendOk = await storageBackend.checkAvailability();
+            if (backendOk) break;
+            await new Promise(r => setTimeout(r, 500));
+        }
         if (backendOk) {
             const savedToken = sessionStorage.getItem('phoi_storage_token');
             if (savedToken) {
