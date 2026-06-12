@@ -33,3 +33,6 @@ __pycache__/
 *.py[cod]
 *$py.class
 *.so
+
+# 运行时数据
+storage_config.json
