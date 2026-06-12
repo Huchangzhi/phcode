@@ -8,6 +8,10 @@ function findFileInList(list, fileName) {
 function hasFile(list, fileName) {
     return !!findFileInList(list, fileName);
 }
+function findVFSFile(fileName) {
+    const lower = fileName.toLowerCase();
+    return Object.keys(vfsStructure['/'].children).find(k => k.toLowerCase() === lower);
+}
 
 // 主题颜色辅助函数
 function getVFSColors() {
@@ -228,6 +232,11 @@ class StorageBackend {
             const data = await res.json();
             this.available = data.available === true;
             this.root = data.hasRoot ? (data.root || null) : null;
+            // 服务端没有 root 时尝试从 localStorage 恢复
+            if (!this.root) {
+                const savedRoot = localStorage.getItem('phoi_storage_root');
+                if (savedRoot) this.root = savedRoot;
+            }
             return this.available;
         } catch { return false; }
     }
@@ -393,7 +402,17 @@ async function initVFSModule() {
         showPermissionRequestModal(false);
     } else if (useNativeFS && storageBackend.available && storageBackend.token && !storageBackend.root) {
         // Python 后端模式（有后端且有 token，但未选文件夹）
-        showPermissionRequestModal(true);
+        // 再从 localStorage 尝试一次恢复路径
+        const savedRoot = localStorage.getItem('phoi_storage_root');
+        if (savedRoot) {
+            storageBackend.root = savedRoot;
+            initializeVFS();
+            await renderVFS();
+            setupEventListeners();
+            updateCurrentFileNameDisplay();
+        } else {
+            showPermissionRequestModal(true);
+        }
     } else {
         // 初始化虚拟文件系统
         initializeVFS();
@@ -720,11 +739,11 @@ async function openFile(filePath) {
         }
     } else {
         // 检查虚拟文件系统
-        fileExists = vfsStructure['/'].children[fileName] && vfsStructure['/'].children[fileName].type === 'file';
+        fileExists = !!findVFSFile(fileName);
     }
 
     if (!fileExists) {
-        fileExists = vfsStructure['/'].children[fileName] && vfsStructure['/'].children[fileName].type === 'file';
+        fileExists = !!findVFSFile(fileName);
     }
 
     if (fileExists) {
@@ -945,7 +964,8 @@ async function deleteFile(fileName) {
             }
         } else {
             // 从虚拟文件系统中删除文件
-            delete vfsStructure['/'].children[fileName];
+            const vfsKey = findVFSFile(fileName);
+            if (vfsKey) delete vfsStructure['/'].children[vfsKey];
 
             saveVFS();
             await renderVFS();
@@ -1011,11 +1031,16 @@ async function uploadFile() {
             }
 
             // 将文件添加到虚拟文件系统
-            vfsStructure['/'].children[fileName] = {
-                type: 'file',
-                name: fileName,
-                content: content
-            };
+            const vfsKey = findVFSFile(fileName);
+            if (vfsKey) {
+                vfsStructure['/'].children[vfsKey].content = content;
+            } else {
+                vfsStructure['/'].children[fileName] = {
+                    type: 'file',
+                    name: fileName,
+                    content: content
+                };
+            }
 
             saveVFS();
             await renderVFS();
@@ -1167,8 +1192,9 @@ async function newFile() {
         }
     } else {
         // 使用虚拟文件系统
-        // 检查文件是否已存在
-        if (vfsStructure['/'].children[fileName]) {
+        // 检查文件是否已存在（大小写不敏感）
+        const existingKey = findVFSFile(fileName);
+        if (existingKey) {
             if (window.PhoiDialog) {
                 await PhoiDialog.alert('文件已存在！');
             } else {
@@ -1220,32 +1246,30 @@ async function saveFileToVFS(fileName, content) {
             if (error.name === 'NotAllowedError' || error.name === 'SecurityError') {
                 fallbackToVirtualFS(error.message);
                 // 并使用虚拟文件系统保存
-                if (!vfsStructure['/'].children[fileName]) {
-                    // 如果文件不存在，创建新文件
+                const vfsKey = findVFSFile(fileName);
+                if (!vfsKey) {
                     vfsStructure['/'].children[fileName] = {
                         type: 'file',
                         name: fileName,
                         content: content
                     };
                 } else {
-                    // 更新现有文件内容
-                    vfsStructure['/'].children[fileName].content = content;
+                    vfsStructure['/'].children[vfsKey].content = content;
                 }
                 saveVFS();
             }
         }
     } else {
         // 使用虚拟文件系统
-        if (!vfsStructure['/'].children[fileName]) {
-            // 如果文件不存在，创建新文件
+        const vfsKey = findVFSFile(fileName);
+        if (!vfsKey) {
             vfsStructure['/'].children[fileName] = {
                 type: 'file',
                 name: fileName,
                 content: content
             };
         } else {
-            // 更新现有文件内容
-            vfsStructure['/'].children[fileName].content = content;
+            vfsStructure['/'].children[vfsKey].content = content;
         }
         saveVFS();
     }
@@ -1283,8 +1307,9 @@ async function getFileContent(fileName) {
     }
     
     // 使用虚拟文件系统
-    if (vfsStructure && vfsStructure['/'].children[fileName] && vfsStructure['/'].children[fileName].type === 'file') {
-        return vfsStructure['/'].children[fileName].content;
+    const vfsKey = findVFSFile(fileName);
+    if (vfsKey) {
+        return vfsStructure['/'].children[vfsKey].content;
     }
     // 文件不存在，检查是否在localStorage中有该文件
     const fileKey = `phoi_file_${fileName}`;
