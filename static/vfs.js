@@ -207,10 +207,12 @@ class StorageBackend {
         this.token = null;
         this.root = null;
         this.appSecret = null;
-        // 从 URL query param 读取 app_secret，然后立即从地址栏移除
+        // 从 URL query param 或 sessionStorage 读取 app_secret
         const params = new URLSearchParams(window.location.search);
-        this.appSecret = params.get('app_secret');
-        if (this.appSecret) {
+        const urlSecret = params.get('app_secret');
+        this.appSecret = urlSecret || sessionStorage.getItem('phoi_app_secret');
+        if (urlSecret) {
+            sessionStorage.setItem('phoi_app_secret', urlSecret);
             params.delete('app_secret');
             const cleanUrl = window.location.pathname + (params.toString() ? '?' + params.toString() : '') + window.location.hash;
             history.replaceState(null, '', cleanUrl);
