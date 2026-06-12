@@ -496,10 +496,8 @@ jobs:
                           String mimeType = mimeTypeForFile(uri);
                           Response resp = newFixedLengthResponse(Response.Status.OK, mimeType, is, is.available());
                           resp.addHeader("Access-Control-Allow-Origin", "*");
-                          if (uri.endsWith(".html") || uri.endsWith(".js") || uri.endsWith(".wasm")) {
-                              resp.addHeader("Cross-Origin-Opener-Policy", "same-origin");
-                              resp.addHeader("Cross-Origin-Embedder-Policy", "require-corp");
-                          }
+                          resp.addHeader("Cross-Origin-Opener-Policy", "same-origin");
+                          resp.addHeader("Cross-Origin-Embedder-Policy", "require-corp");
                           return resp;
                       } catch (IOException e) {
                           return newFixedLengthResponse(Response.Status.NOT_FOUND, "text/plain", "404");
