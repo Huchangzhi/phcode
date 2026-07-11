@@ -107,10 +107,22 @@ jobs:
       run: |
         npm run package -- --target node22-win-x64
 
-    - name: Set icon (resedit --no-grow 不破坏 pkg 快照偏移)
+    - name: Set icon (resedit API noGrow 不破坏 pkg 快照偏移)
       working-directory: packages/desktop
       run: |
-        npx resedit phcode.exe phcode.exe --no-grow --icon 1,../frontend/public/static/logo.ico
+        npx --package resedit node -e "
+        const ResEdit = require('resedit');
+        const { readFileSync, writeFileSync } = require('fs');
+        const data = readFileSync('phcode.exe');
+        const exe = ResEdit.NtExecutable.from(data);
+        const res = ResEdit.NtExecutableResource.from(exe);
+        const iconFile = ResEdit.Data.IconFile.from(readFileSync('../frontend/public/static/logo.ico'));
+        ResEdit.Resource.IconGroupEntry.replaceIconsForResource(res.entries, 1, 1033,
+          iconFile.icons.map((item) => item.data));
+        res.outputResource(exe, { noGrow: true });
+        writeFileSync('phcode.exe', Buffer.from(exe.generate()));
+        console.log('Icon set successfully');
+        "
 
     - name: Sign desktop executable
       shell: pwsh
