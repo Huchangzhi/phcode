@@ -143,6 +143,11 @@ jobs:
         New-Item -ItemType Directory -Name "temp_package\phcode_data" -Force
         Compress-Archive -Path "temp_package\*" -DestinationPath $zipFileName -Force
 
+    - name: Install NSIS
+      uses: negrutiu/nsis-install@v2
+      with:
+        nsis-version: official
+
     - name: Create installer with NSIS
       shell: pwsh
       run: |
