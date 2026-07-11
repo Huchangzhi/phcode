@@ -350,18 +350,18 @@ jobs:
 
         # AndroidManifest.xml
         @"
-<?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="$appId"
-    android:versionCode="$versionCode"
-    android:versionName="$versionName">
+        <?xml version="1.0" encoding="utf-8"?>
+        <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+        package="$appId"
+        android:versionCode="$versionCode"
+        android:versionName="$versionName">
 
-    <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+        <uses-permission android:name="android.permission.INTERNET" />
+        <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+        <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+        <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
-    <application
+        <application
         android:allowBackup="true"
         android:hasFragileUserData="true"
         android:icon="@mipmap/ic_launcher"
@@ -386,9 +386,9 @@ jobs:
             android:name=".ServerService"
             android:exported="false"
             android:enabled="true" />
-    </application>
-</manifest>
-"@ | Set-Content -Path "android-app\app\src\main\AndroidManifest.xml" -Encoding UTF8
+        </application>
+        </manifest>
+        "@ | Set-Content -Path "android-app\app\src\main\AndroidManifest.xml" -Encoding UTF8
 
         # 生成应用图标
         $iconUrl = "https://raw.githubusercontent.com/huchangzhi/phoi/main/packages/frontend/public/static/logo.png"
@@ -411,21 +411,21 @@ jobs:
 
         # MainActivity.java
         @"
-package $appId;
+        package $appId;
 
-import android.os.Bundle;
-import android.view.View;
-import android.webkit.WebChromeClient;
-import android.webkit.WebSettings;
-import android.webkit.WebView;
-import android.webkit.WebViewClient;
-import androidx.appcompat.app.AppCompatActivity;
+        import android.os.Bundle;
+        import android.view.View;
+        import android.webkit.WebChromeClient;
+        import android.webkit.WebSettings;
+        import android.webkit.WebView;
+        import android.webkit.WebViewClient;
+        import androidx.appcompat.app.AppCompatActivity;
 
-public class MainActivity extends AppCompatActivity {
-    private WebView webView;
+        public class MainActivity extends AppCompatActivity {
+        private WebView webView;
 
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
+        @Override
+        protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
         webView = new WebView(this);
@@ -442,44 +442,44 @@ public class MainActivity extends AppCompatActivity {
 
         // 加载本地页面
         webView.loadUrl("http://127.0.0.1:27120/index.html");
-    }
+        }
 
-    @Override
-    public void onBackPressed() {
+        @Override
+        public void onBackPressed() {
         if (webView.canGoBack()) {
             webView.goBack();
         } else {
             super.onBackPressed();
         }
-    }
-}
+        }
+        }
         "@ | Set-Content -Path "android-app\app\src\main\java\$($appId -replace '\.', '\')\MainActivity.java" -Encoding UTF8
 
         # ServerService.java
         @"
-package $appId;
+        package $appId;
 
-import android.app.Notification;
-import android.app.NotificationChannel;
-import android.app.NotificationManager;
-import android.app.Service;
-import android.content.Context;
-import android.content.Intent;
-import android.os.Build;
-import android.os.IBinder;
-import androidx.core.app.NotificationCompat;
+        import android.app.Notification;
+        import android.app.NotificationChannel;
+        import android.app.NotificationManager;
+        import android.app.Service;
+        import android.content.Context;
+        import android.content.Intent;
+        import android.os.Build;
+        import android.os.IBinder;
+        import androidx.core.app.NotificationCompat;
 
-import java.io.IOException;
-import java.io.InputStream;
+        import java.io.IOException;
+        import java.io.InputStream;
 
-import fi.iki.elonen.NanoHTTPD;
+        import fi.iki.elonen.NanoHTTPD;
 
-public class ServerService extends Service {
-    private static Server server;
-    private static final int NOTIFICATION_ID = 1;
-    private static final String CHANNEL_ID = "server_service_channel";
+        public class ServerService extends Service {
+        private static Server server;
+        private static final int NOTIFICATION_ID = 1;
+        private static final String CHANNEL_ID = "server_service_channel";
 
-    public static void startServer(Context context) {
+        public static void startServer(Context context) {
         if (server == null) {
             server = new Server(context, 27120);
         }
@@ -490,27 +490,27 @@ public class ServerService extends Service {
         } catch (IOException e) {
             e.printStackTrace();
         }
-    }
+        }
 
-    @Override
-    public void onCreate() {
+        @Override
+        public void onCreate() {
         super.onCreate();
         createNotificationChannel();
         startForeground(NOTIFICATION_ID, buildNotification());
         startServer(this);
-    }
+        }
 
-    @Override
-    public int onStartCommand(Intent intent, int flags, int startId) {
+        @Override
+        public int onStartCommand(Intent intent, int flags, int startId) {
         return START_STICKY;
-    }
+        }
 
-    @Override
-    public IBinder onBind(Intent intent) {
+        @Override
+        public IBinder onBind(Intent intent) {
         return null;
-    }
+        }
 
-    private void createNotificationChannel() {
+        private void createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel channel = new NotificationChannel(
                 CHANNEL_ID, getString(R.string.app_name), NotificationManager.IMPORTANCE_LOW
@@ -518,17 +518,17 @@ public class ServerService extends Service {
             NotificationManager manager = getSystemService(NotificationManager.class);
             manager.createNotificationChannel(channel);
         }
-    }
+        }
 
-    private Notification buildNotification() {
+        private Notification buildNotification() {
         return new NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(getString(R.string.app_name))
             .setContentText("Server is running")
             .setSmallIcon(android.R.drawable.ic_menu_manage)
             .build();
-    }
+        }
 
-    private static class Server extends NanoHTTPD {
+        private static class Server extends NanoHTTPD {
         private final Context context;
 
         public Server(Context context, int port) {
@@ -553,99 +553,99 @@ public class ServerService extends Service {
                 return newFixedLengthResponse(Response.Status.NOT_FOUND, "text/plain", "Not Found");
             }
         }
-    }
-}
-"@ | Set-Content -Path "android-app\app\src\main\java\$($appId -replace '\.', '\')\ServerService.java" -Encoding UTF8
+        }
+        }
+        "@ | Set-Content -Path "android-app\app\src\main\java\$($appId -replace '\.', '\')\ServerService.java" -Encoding UTF8
 
         # strings.xml
         New-Item -ItemType Directory -Path "android-app\app\src\main\res\values" -Force | Out-Null
         @"
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <string name="app_name">$appName</string>
-</resources>
-"@ | Set-Content -Path "android-app\app\src\main\res\values\strings.xml" -Encoding UTF8
+        <?xml version="1.0" encoding="utf-8"?>
+        <resources>
+        <string name="app_name">$appName</string>
+        </resources>
+        "@ | Set-Content -Path "android-app\app\src\main\res\values\strings.xml" -Encoding UTF8
 
         # themes.xml
         @"
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <style name="AppTheme" parent="Theme.AppCompat.Light.NoActionBar">
+        <?xml version="1.0" encoding="utf-8"?>
+        <resources>
+        <style name="AppTheme" parent="Theme.AppCompat.Light.NoActionBar">
         <item name="android:windowFullscreen">true</item>
-    </style>
-</resources>
-"@ | Set-Content -Path "android-app\app\src\main\res\values\themes.xml" -Encoding UTF8
+        </style>
+        </resources>
+        "@ | Set-Content -Path "android-app\app\src\main\res\values\themes.xml" -Encoding UTF8
 
         # build.gradle (app)
         @"
-plugins {
-    id 'com.android.application'
-}
+        plugins {
+        id 'com.android.application'
+        }
 
-android {
-    namespace '$appId'
-    compileSdk $compileSdk
+        android {
+        namespace '$appId'
+        compileSdk $compileSdk
 
-    defaultConfig {
+        defaultConfig {
         applicationId '$appId'
         minSdk $minSdk
         targetSdk $targetSdk
         versionCode $versionCode
         versionName '$versionName'
-    }
+        }
 
-    buildTypes {
+        buildTypes {
         release {
             minifyEnabled false
         }
-    }
+        }
 
-    splits {
+        splits {
         abi {
             enable true
             reset()
             include 'arm64-v8a', 'armeabi-v7a', 'x86_64'
             universalApk false
         }
-    }
+        }
 
-    compileOptions {
+        compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
-    }
-}
+        }
+        }
 
-dependencies {
-    implementation 'org.nanohttpd:nanohttpd:2.3.1'
-    implementation 'androidx.appcompat:appcompat:1.6.1'
-}
-"@ | Set-Content -Path "android-app\app\build.gradle" -Encoding UTF8
+        dependencies {
+        implementation 'org.nanohttpd:nanohttpd:2.3.1'
+        implementation 'androidx.appcompat:appcompat:1.6.1'
+        }
+        "@ | Set-Content -Path "android-app\app\build.gradle" -Encoding UTF8
 
         # settings.gradle
         @"
-pluginManagement {
-    repositories {
+        pluginManagement {
+        repositories {
         google()
         mavenCentral()
         gradlePluginPortal()
-    }
-}
-dependencyResolutionManagement {
-    repositories {
+        }
+        }
+        dependencyResolutionManagement {
+        repositories {
         google()
         mavenCentral()
-    }
-}
+        }
+        }
 
-rootProject.name = 'PHCode'
-include ':app'
-"@ | Set-Content -Path "android-app\settings.gradle" -Encoding UTF8
+        rootProject.name = 'PHCode'
+        include ':app'
+        "@ | Set-Content -Path "android-app\settings.gradle" -Encoding UTF8
 
         # gradle.properties
         @"
-org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8
-android.useAndroidX=true
-"@ | Set-Content -Path "android-app\gradle.properties" -Encoding UTF8
+        org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8
+        android.useAndroidX=true
+        "@ | Set-Content -Path "android-app\gradle.properties" -Encoding UTF8
 
     - name: Create Gradle Wrapper
       shell: pwsh
@@ -663,14 +663,14 @@ android.useAndroidX=true
         } else {
           New-Item -ItemType Directory -Path "gradle\wrapper" -Force
           @"
-distributionBase=GRADLE_USER_HOME
-distributionPath=wrapper/dists
-distributionUrl=https\://services.gradle.org/distributions/gradle-9.5.1-bin.zip
-networkTimeout=10000
-validateDistributionUrl=true
-zipStoreBase=GRADLE_USER_HOME
-zipStorePath=wrapper/dists
-"@ | Set-Content -Path "gradle\wrapper\gradle-wrapper.properties"
+        distributionBase=GRADLE_USER_HOME
+        distributionPath=wrapper/dists
+        distributionUrl=https\://services.gradle.org/distributions/gradle-9.5.1-bin.zip
+        networkTimeout=10000
+        validateDistributionUrl=true
+        zipStoreBase=GRADLE_USER_HOME
+        zipStorePath=wrapper/dists
+        "@ | Set-Content -Path "gradle\wrapper\gradle-wrapper.properties"
         }
 
     - name: Decode keystore
@@ -685,22 +685,22 @@ zipStorePath=wrapper/dists
           # 注入签名配置到 build.gradle
           $signingConfig = @"
 
-android {
-    signingConfigs {
+        android {
+        signingConfigs {
         release {
             storeFile file('../../phcode.keystore')
             storePassword '${{ secrets.KEYSTORE_PASSWORD }}'
             keyAlias '${{ secrets.KEY_ALIAS }}'
             keyPassword '${{ secrets.KEY_PASSWORD }}'
         }
-    }
-    buildTypes {
+        }
+        buildTypes {
         release {
             signingConfig signingConfigs.release
         }
-    }
-}
-"@
+        }
+        }
+        "@
           Add-Content -Path "android-app\app\build.gradle" -Value $signingConfig -Encoding UTF8
           Write-Host "Signing config injected"
         } else {
@@ -850,15 +850,15 @@ android {
 
         # AndroidManifest.xml
         @"
-<?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="$appId"
-    android:versionCode="$versionCode"
-    android:versionName="$versionName">
+        <?xml version="1.0" encoding="utf-8"?>
+        <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+        package="$appId"
+        android:versionCode="$versionCode"
+        android:versionName="$versionName">
 
-    <uses-permission android:name="android.permission.INTERNET" />
+        <uses-permission android:name="android.permission.INTERNET" />
 
-    <application
+        <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
         android:label="$appName"
@@ -877,30 +877,30 @@ android {
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-    </application>
-</manifest>
-"@ | Set-Content -Path "android-lite\app\src\main\AndroidManifest.xml" -Encoding UTF8
+        </application>
+        </manifest>
+        "@ | Set-Content -Path "android-lite\app\src\main\AndroidManifest.xml" -Encoding UTF8
 
         # MainActivity.java (Lite version - uses WebViewAssetLoader)
         $mainActivity = @'
-package com.hcz.phcode.lite;
+        package com.hcz.phcode.lite;
 
-import android.graphics.Bitmap;
-import android.os.Bundle;
-import android.view.View;
-import android.webkit.WebChromeClient;
-import android.webkit.WebResourceRequest;
-import android.webkit.WebSettings;
-import android.webkit.WebView;
-import android.webkit.WebViewClient;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.webkit.WebViewAssetLoader;
+        import android.graphics.Bitmap;
+        import android.os.Bundle;
+        import android.view.View;
+        import android.webkit.WebChromeClient;
+        import android.webkit.WebResourceRequest;
+        import android.webkit.WebSettings;
+        import android.webkit.WebView;
+        import android.webkit.WebViewClient;
+        import androidx.appcompat.app.AppCompatActivity;
+        import androidx.webkit.WebViewAssetLoader;
 
-public class MainActivity extends AppCompatActivity {
-    private WebView webView;
+        public class MainActivity extends AppCompatActivity {
+        private WebView webView;
 
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
+        @Override
+        protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
         webView = new WebView(this);
@@ -932,18 +932,18 @@ public class MainActivity extends AppCompatActivity {
         });
 
         webView.loadUrl("https://appassets.androidplatform.net/index.html");
-    }
+        }
 
-    @Override
-    public void onBackPressed() {
+        @Override
+        public void onBackPressed() {
         if (webView.canGoBack()) {
             webView.goBack();
         } else {
             super.onBackPressed();
         }
-    }
-}
-'@
+        }
+        }
+        '@
         $pkgDir = $appId -replace '\.', '\'
         $mainActivityPath = "android-lite\app\src\main\java\$pkgDir\MainActivity.java"
         New-Item -ItemType Directory -Path (Split-Path $mainActivityPath -Parent) -Force | Out-Null
@@ -951,66 +951,66 @@ public class MainActivity extends AppCompatActivity {
 
         # build.gradle
         @"
-plugins {
-    id 'com.android.application'
-}
+        plugins {
+        id 'com.android.application'
+        }
 
-android {
-    namespace '$appId'
-    compileSdk $compileSdk
+        android {
+        namespace '$appId'
+        compileSdk $compileSdk
 
-    defaultConfig {
+        defaultConfig {
         applicationId '$appId'
         minSdk $minSdk
         targetSdk $targetSdk
         versionCode $versionCode
         versionName '$versionName'
-    }
+        }
 
-    buildTypes {
+        buildTypes {
         release {
             minifyEnabled false
         }
-    }
+        }
 
-    compileOptions {
+        compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
-    }
-}
+        }
+        }
 
-dependencies {
-    implementation 'androidx.appcompat:appcompat:1.6.1'
-    implementation 'androidx.webkit:webkit:1.8.0'
-}
-"@ | Set-Content -Path "android-lite\app\build.gradle" -Encoding UTF8
+        dependencies {
+        implementation 'androidx.appcompat:appcompat:1.6.1'
+        implementation 'androidx.webkit:webkit:1.8.0'
+        }
+        "@ | Set-Content -Path "android-lite\app\build.gradle" -Encoding UTF8
 
         # settings.gradle
         @"
-pluginManagement {
-    repositories {
+        pluginManagement {
+        repositories {
         google()
         mavenCentral()
         gradlePluginPortal()
-    }
-}
-dependencyResolutionManagement {
-    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
-    repositories {
+        }
+        }
+        dependencyResolutionManagement {
+        repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+        repositories {
         google()
         mavenCentral()
-    }
-}
+        }
+        }
 
-rootProject.name = 'PHCodeLite'
-include ':app'
-"@ | Set-Content -Path "android-lite\settings.gradle" -Encoding UTF8
+        rootProject.name = 'PHCodeLite'
+        include ':app'
+        "@ | Set-Content -Path "android-lite\settings.gradle" -Encoding UTF8
 
         # gradle.properties
         @"
-org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8
-android.useAndroidX=true
-"@ | Set-Content -Path "android-lite\gradle.properties" -Encoding UTF8
+        org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8
+        android.useAndroidX=true
+        "@ | Set-Content -Path "android-lite\gradle.properties" -Encoding UTF8
 
         # 图标和资源文件
         @("mdpi", "hdpi", "xhdpi", "xxhdpi", "xxxhdpi") | ForEach-Object {
@@ -1027,21 +1027,21 @@ android.useAndroidX=true
         # strings.xml
         New-Item -ItemType Directory -Path "android-lite\app\src\main\res\values" -Force | Out-Null
         @"
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <string name="app_name">$appName</string>
-</resources>
-"@ | Set-Content -Path "android-lite\app\src\main\res\values\strings.xml" -Encoding UTF8
+        <?xml version="1.0" encoding="utf-8"?>
+        <resources>
+        <string name="app_name">$appName</string>
+        </resources>
+        "@ | Set-Content -Path "android-lite\app\src\main\res\values\strings.xml" -Encoding UTF8
 
         # themes.xml
         @"
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <style name="AppTheme" parent="Theme.AppCompat.Light.NoActionBar">
+        <?xml version="1.0" encoding="utf-8"?>
+        <resources>
+        <style name="AppTheme" parent="Theme.AppCompat.Light.NoActionBar">
         <item name="android:windowFullscreen">true</item>
-    </style>
-</resources>
-"@ | Set-Content -Path "android-lite\app\src\main\res\values\themes.xml" -Encoding UTF8
+        </style>
+        </resources>
+        "@ | Set-Content -Path "android-lite\app\src\main\res\values\themes.xml" -Encoding UTF8
 
     - name: Create Gradle Wrapper
       shell: pwsh
@@ -1059,14 +1059,14 @@ android.useAndroidX=true
         } else {
           New-Item -ItemType Directory -Path "gradle\wrapper" -Force
           @"
-distributionBase=GRADLE_USER_HOME
-distributionPath=wrapper/dists
-distributionUrl=https\://services.gradle.org/distributions/gradle-8.2-bin.zip
-networkTimeout=10000
-validateDistributionUrl=true
-zipStoreBase=GRADLE_USER_HOME
-zipStorePath=wrapper/dists
-"@ | Set-Content -Path "gradle\wrapper\gradle-wrapper.properties"
+        distributionBase=GRADLE_USER_HOME
+        distributionPath=wrapper/dists
+        distributionUrl=https\://services.gradle.org/distributions/gradle-8.2-bin.zip
+        networkTimeout=10000
+        validateDistributionUrl=true
+        zipStoreBase=GRADLE_USER_HOME
+        zipStorePath=wrapper/dists
+        "@ | Set-Content -Path "gradle\wrapper\gradle-wrapper.properties"
         }
 
     - name: Decode keystore
@@ -1078,22 +1078,22 @@ zipStorePath=wrapper/dists
           [System.IO.File]::WriteAllBytes("phcode.keystore", $keystoreBytes)
           $signingConfig = @"
 
-android {
-    signingConfigs {
+        android {
+        signingConfigs {
         release {
             storeFile file('../../phcode.keystore')
             storePassword '${{ secrets.KEYSTORE_PASSWORD }}'
             keyAlias '${{ secrets.KEY_ALIAS }}'
             keyPassword '${{ secrets.KEY_PASSWORD }}'
         }
-    }
-    buildTypes {
+        }
+        buildTypes {
         release {
             signingConfig signingConfigs.release
         }
-    }
-}
-"@
+        }
+        }
+        "@
           Add-Content -Path "android-lite\app\build.gradle" -Value $signingConfig -Encoding UTF8
         } else {
           Write-Host "No keystore found, building without signing"
