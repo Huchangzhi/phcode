@@ -9,7 +9,7 @@
     "dev": "npm -w @phoi/frontend run build && tsx watch src/main.ts",
     "build": "tsc -b",
     "start": "node dist/main.js",
-    "package": "pkg dist/main.js --output phcode.exe --fallback-to-source --public",
+    "package": "pkg . --output phcode.exe --fallback-to-source --public",
     "clean": "node -e \"import('fs').then(({rmSync})=>rmSync('dist',{recursive:true,force:true}))\""
   },
   "dependencies": {
