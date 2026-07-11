@@ -127,6 +127,11 @@ jobs:
       run: |
         npm run package -- --target node22-win-x64
 
+    - name: Set icon
+      working-directory: packages/desktop
+      run: |
+        npx @electron/rcedit phcode.exe --icon ../frontend/public/static/logo.ico
+
     - name: Sign desktop executable
       shell: pwsh
       run: |
