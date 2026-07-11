@@ -125,7 +125,7 @@ jobs:
     - name: Package desktop executable
       working-directory: packages/desktop
       run: |
-        npm run package -- --target node20-win-x64
+        npm run sea
 
     - name: Sign desktop executable
       shell: pwsh

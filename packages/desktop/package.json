@@ -9,7 +9,7 @@
     "dev": "npm -w @phoi/frontend run build && tsx watch src/main.ts",
     "build": "tsc -b",
     "start": "node dist/main.js",
-    "package": "pkg . --output phcode.exe --compress GZip",
+    "sea": "node --experimental-sea-config sea-config.json && node -e \"require('fs').copyFileSync(process.execPath, 'phcode.exe')\" && npx postject phcode.exe NODE_SEA_BLOB sea-prep.blob --sentinel-fuse NODE_SEA_FUSE_fce680ab2cc467b6e072b8b5df1996b2",
     "clean": "node -e \"import('fs').then(({rmSync})=>rmSync('dist',{recursive:true,force:true}))\""
   },
   "dependencies": {
@@ -22,7 +22,6 @@
     "@types/cors": "^2.8.17",
     "@types/node": "^20.14.0",
     "tsx": "^4.15.0",
-    "@yao-pkg/pkg": "^6.21.0",
     "typescript": "^5.5.0"
   }
 }
