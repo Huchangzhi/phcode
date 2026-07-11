@@ -26,6 +26,7 @@
     "@types/node": "^20.14.0",
     "tsx": "^4.15.0",
     "@yao-pkg/pkg": "^6.21.0",
+    "resedit": "^2.0.0",
     "typescript": "^5.5.0"
   }
 }
