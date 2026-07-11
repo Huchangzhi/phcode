@@ -15,7 +15,7 @@ jobs:
     runs-on: windows-latest
 
     env:
-      NODE_VERSION: '20'
+      NODE_VERSION: '22'
 
     steps:
     - name: Checkout code
@@ -50,7 +50,7 @@ jobs:
           Get-ChildItem -Path "." -Directory | Select-Object Name
           exit 1
         }
-        Write-Host "✓ g++ 编译器已准备就绪：w64devkit\bin\g++.exe"
+        Write-Host "�?g++ 编译器已准备就绪：w64devkit\bin\g++.exe"
 
     - name: Determine version
       shell: pwsh
@@ -104,7 +104,7 @@ jobs:
         $content = Get-Content -Path $filePath -Raw -Encoding UTF8
         $content = $content -replace '<p>web版本</p>', "<p>版本号：$version</p>"
         Set-Content -Path $filePath -Value $content -Encoding UTF8 -NoNewline
-        Write-Host "✓ 已更新版本号为：$version"
+        Write-Host "�?已更新版本号为：$version"
 
     - name: Build shared libraries
       run: |
@@ -125,7 +125,7 @@ jobs:
     - name: Package desktop executable
       working-directory: packages/desktop
       run: |
-        npm run package -- --target node20-win-x64
+        npm run package -- --target node22-win-x64
 
     - name: Sign desktop executable
       shell: pwsh
@@ -138,9 +138,9 @@ jobs:
           [System.IO.File]::WriteAllBytes($certPath, $certBytes)
           $exePath = Resolve-Path "packages\desktop\phcode.exe"
           & "signtool" sign /fd SHA256 /f $certPath /p $certPass /tr http://timestamp.digicert.com /td SHA256 $exePath
-          Write-Host "✓ EXE 已签名"
+          Write-Host "�?EXE 已签�?
         } else {
-          Write-Host "跳过签名（未提供证书）"
+          Write-Host "跳过签名（未提供证书�?
         }
 
     - name: Create ZIP archive
@@ -174,9 +174,9 @@ jobs:
         makensis /INPUTCHARSET UTF8 /DVERSION=$version installer.nsi
         $installerExe = "phcode-installer-$version.exe"
         if (Test-Path $installerExe) {
-          Write-Host "✓ 安装程序创建成功：$installerExe"
+          Write-Host "�?安装程序创建成功�?installerExe"
           $installerSize = (Get-Item $installerExe).Length / 1MB
-          Write-Host "安装程序大小：$([math]::Round($installerSize, 2)) MB"
+          Write-Host "安装程序大小�?([math]::Round($installerSize, 2)) MB"
         } else {
           Write-Error "安装程序创建失败"
           Get-ChildItem -Filter "*.exe"
@@ -212,11 +212,11 @@ jobs:
         $version = "${{ steps.version.outputs.version }}"
         $notes = ""
         if ($version.StartsWith("nightly-")) {
-          $notes = "## PH Code Nightly Build 当前版本为开发中版本，可能包含最新功能但也可能存在未解决的 bug。"
+          $notes = "## PH Code Nightly Build 当前版本为开发中版本，可能包含最新功能但也可能存在未解决�?bug�?
         } elseif ($version -like "*beta*") {
-          $notes = "## PH Code Beta build 当前版本为预览版，可能存在未知的 bug，建议仅在测试环境中使用。"
+          $notes = "## PH Code Beta build 当前版本为预览版，可能存在未知的 bug，建议仅在测试环境中使用�?
         } else {
-          $notes = "## PH Code 稳定版本。"
+          $notes = "## PH Code 稳定版本�?
         }
         Write-Host "notes=$notes"
         "notes=$notes" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
@@ -248,7 +248,7 @@ jobs:
           --notes "$notes" `
           --prerelease=$isPrerelease `
           $zipFile $installerFile
-        Write-Host "✓ Release created: $releaseName"
+        Write-Host "�?Release created: $releaseName"
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -285,7 +285,7 @@ jobs:
           $tagName = "v$versionRaw"
         }
 
-        # 计算 versionCode (用 git 提交数)
+        # 计算 versionCode (�?git 提交�?
         $versionCode = git rev-list --count HEAD
 
         Write-Host "versionRaw=$versionRaw"
@@ -315,7 +315,7 @@ jobs:
         # 准备前端资源（从 Vite 构建产物取）
         Copy-Item -Recurse "packages\frontend\dist\*" "android-app\app\src\main\assets\" -Force
 
-        # 将 /static/ 路径改为相对路径（Android 嵌入式服务器用）
+        # �?/static/ 路径改为相对路径（Android 嵌入式服务器用）
         Get-ChildItem -Recurse -Filter "*.html" -Path "android-app\app\src\main\assets" | ForEach-Object {
           $content = Get-Content -Path $_.FullName -Raw -Encoding UTF8
           $content = $content -replace 'src="/static/', 'src="static/'
@@ -324,7 +324,7 @@ jobs:
           Set-Content -Path $_.FullName -Value $content -Encoding UTF8 -NoNewline
         }
 
-        # 将 /run POST 替换为远端 API
+        # �?/run POST 替换为远�?API
         Get-ChildItem -Recurse -Filter "*.js" -Path "android-app\app\src\main\assets" | ForEach-Object {
           $content = Get-Content -Path $_.FullName -Raw -Encoding UTF8
           $content = $content -replace "fetch\('/run'", "fetch('/api/run'"
@@ -441,7 +441,7 @@ jobs:
         settings.setAllowFileAccess(true);
         settings.setAllowContentAccess(true);
 
-        // 启动内嵌服务器
+        // 启动内嵌服务�?
         ServerService.startServer(this);
 
         // 加载本地页面
@@ -686,7 +686,7 @@ jobs:
           [System.IO.File]::WriteAllBytes("phcode.keystore", $keystoreBytes)
           Write-Host "Keystore decoded successfully"
 
-          # 注入签名配置到 build.gradle
+          # 注入签名配置�?build.gradle
           $signingConfig = @"
 
         android {
@@ -715,7 +715,7 @@ jobs:
       shell: pwsh
       working-directory: android-app
       run: |
-        # 给 gradlew 执行权限
+        # �?gradlew 执行权限
         if (Test-Path "gradlew") {
           & chmod +x gradlew
           & ./gradlew assembleRelease --no-daemon
@@ -730,7 +730,7 @@ jobs:
       run: |
         $apkFiles = Get-ChildItem -Recurse -Filter "*.apk" -Path "android-app"
         if ($apkFiles.Count -eq 0) {
-          Write-Error "未找到 APK 文件"
+          Write-Error "未找�?APK 文件"
           Get-ChildItem -Path "android-app" -Recurse -Depth 5 | Select-Object FullName
           exit 1
         }
@@ -817,7 +817,7 @@ jobs:
         # 准备前端资源（从 Vite 构建产物取）
         Copy-Item -Recurse "packages\frontend\dist\*" "android-lite\app\src\main\assets\" -Force
 
-        # 将 /static/ 路径改为相对路径
+        # �?/static/ 路径改为相对路径
         Get-ChildItem -Recurse -Filter "*.html" -Path "android-lite\app\src\main\assets" | ForEach-Object {
           $content = Get-Content -Path $_.FullName -Raw -Encoding UTF8
           $content = $content -replace 'src="/static/', 'src="static/'
@@ -1016,7 +1016,7 @@ jobs:
         android.useAndroidX=true
         "@ | Set-Content -Path "android-lite\gradle.properties" -Encoding UTF8
 
-        # 图标和资源文件
+        # 图标和资源文�?
         @("mdpi", "hdpi", "xhdpi", "xxhdpi", "xxxhdpi") | ForEach-Object {
           New-Item -ItemType Directory -Path "android-lite\app\src\main\res\mipmap-$_" -Force | Out-Null
         }
@@ -1120,7 +1120,7 @@ jobs:
       run: |
         $apkFiles = Get-ChildItem -Recurse -Filter "*.apk" -Path "android-lite"
         if ($apkFiles.Count -eq 0) {
-          Write-Error "未找到 Lite APK 文件"
+          Write-Error "未找�?Lite APK 文件"
           exit 1
         }
         $apkFiles | ForEach-Object {
@@ -1155,7 +1155,7 @@ jobs:
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
 
     env:
-      NODE_VERSION: '20'
+      NODE_VERSION: '22'
 
     steps:
     - name: Checkout code
