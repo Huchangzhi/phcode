@@ -1,0 +1,2421 @@
+/* ============================================
+   主题变量系统 - 深色模式（默认）
+   ============================================ */
+:root {
+    /* 基础颜色 */
+    --bg-color: #1e1e1e;
+    --editor-bg: #111;
+    --key-bg: #333;
+    --key-active: #555;
+    --key-shift-active: #004080;
+    --key-ctrl-active: #005a9e;
+    --text-color: #d4d4d4;
+    --dim-color: #666;
+    --accent-color: #005a9e;
+    --border-color: #111;
+    
+    /* 菜单栏 */
+    --menu-bg: #333333;
+    --menu-hover: #444444;
+    --menu-border: #444444;
+    --menu-text: #cccccc;
+    
+    /* 下拉菜单 */
+    --dropdown-bg: #333333;
+    --dropdown-border: #444444;
+    --dropdown-item-hover: #444444;
+    
+    /* 侧边栏 */
+    --sidebar-bg: #252526;
+    --sidebar-border: #333333;
+    --sidebar-btn-bg: #333333;
+    --sidebar-btn-hover: #444444;
+    
+    /* 面板 */
+    --panel-bg: #252526;
+    --panel-header-bg: #333333;
+    --panel-border: #444444;
+    --panel-hover: #444444;
+    
+    /* 模态框 */
+    --modal-overlay: rgba(0, 0, 0, 0.7);
+    --modal-bg: #252526;
+    --modal-border: #444;
+    --modal-header-bg: #333;
+    --modal-shadow: rgba(0,0,0,0.5);
+    
+    /* 终端 */
+    --terminal-bg: #0d0d0d;
+    --terminal-header-bg: #1e1e1e;
+    --terminal-border-color: #005a9e;
+    --terminal-tab-active: #005a9e;
+    --terminal-tab-hover: #2a2a2a;
+    
+    /* 插件 */
+    --plugin-bg: #2d2d30;
+    --plugin-border: #444;
+    --plugin-header-color: #ffffff;
+    
+    /* 按钮 */
+    --btn-primary: #005a9e;
+    --btn-primary-hover: #004080;
+    --btn-secondary: #3e3e42;
+    --btn-danger: #c53030;
+    
+    /* 输入框 */
+    --input-bg: #1e1e1e;
+    --input-border: #3c3c3c;
+    --input-text: #d4d4d4;
+    
+    /* 代码高亮 */
+    --hl-kw: #569cd6;
+    --hl-str: #ce9178;
+    --hl-com: #6a9955;
+    --hl-dir: #c586c0;
+    --hl-num: #b5cea8;
+    
+    /* 其他 */
+    --link-color: #4daafc;
+    --vfs-folder-color: white;
+    --terminal-text: #ccc;
+}
+
+/* ============================================
+   浅色模式变量
+   ============================================ */
+[data-theme="light"] {
+    /* 基础颜色 */
+    --bg-color: #ffffff;
+    --editor-bg: #f5f5f5;
+    --key-bg: #e0e0e0;
+    --key-active: #c0c0c0;
+    --key-shift-active: #0078d4;
+    --key-ctrl-active: #0078d4;
+    --text-color: #333333;
+    --dim-color: #6e6e6e;
+    --accent-color: #0078d4;
+    --border-color: #e0e0e0;
+    
+    /* 菜单栏 */
+    --menu-bg: #f0f0f0;
+    --menu-hover: #e0e0e0;
+    --menu-border: #d0d0d0;
+    --menu-text: #333333;
+    
+    /* 下拉菜单 */
+    --dropdown-bg: #f0f0f0;
+    --dropdown-border: #d0d0d0;
+    --dropdown-item-hover: #e0e0e0;
+    
+    /* 侧边栏 */
+    --sidebar-bg: #f3f3f3;
+    --sidebar-border: #e0e0e0;
+    --sidebar-btn-bg: #e0e0e0;
+    --sidebar-btn-hover: #d0d0d0;
+    
+    /* 面板 */
+    --panel-bg: #f3f3f3;
+    --panel-header-bg: #f0f0f0;
+    --panel-border: #e0e0e0;
+    --panel-hover: #e0e0e0;
+    
+    /* 模态框 */
+    --modal-overlay: rgba(0, 0, 0, 0.3);
+    --modal-bg: #ffffff;
+    --modal-border: #d0d0d0;
+    --modal-header-bg: #f0f0f0;
+    --modal-shadow: rgba(0,0,0,0.2);
+    
+    /* 终端 */
+    --terminal-bg: #f9f9f9;
+    --terminal-header-bg: #f0f0f0;
+    --terminal-border-color: #0078d4;
+    --terminal-tab-active: #0078d4;
+    --terminal-tab-hover: #e8e8e8;
+    
+    /* 插件 */
+    --plugin-bg: #fafafa;
+    --plugin-border: #d0d0d0;
+    --plugin-header-color: #333333;
+    
+    /* 按钮 */
+    --btn-primary: #0078d4;
+    --btn-primary-hover: #106ebe;
+    --btn-secondary: #e0e0e0;
+    --btn-danger: #d13438;
+    
+    /* 输入框 */
+    --input-bg: #ffffff;
+    --input-border: #d0d0d0;
+    --input-text: #333333;
+    
+    /* 代码高亮 - 浅色版 */
+    --hl-kw: #0000ff;
+    --hl-str: #a31515;
+    --hl-com: #008000;
+    --hl-dir: #af00db;
+    --hl-num: #098658;
+    
+    /* 其他 */
+    --link-color: #0066cc;
+    --vfs-folder-color: #333333;
+    --terminal-text: #333;
+    
+    /* 图标按钮在浅色模式下使用深色图标 */
+    --icon-filter: brightness(0.2);
+}
+
+* { box-sizing: border-box; touch-action: none; }
+/* 只对特定元素禁用选择，保留其他元素可选择 */
+.key, .tool-btn, .line-number, .line-view, .line-wrapper, .row, .modal-header, .output-header { user-select: none; -webkit-user-select: none; }
+body { margin: 0; padding: 0; background-color: var(--bg-color); height: 100vh; width: 100vw; display: flex; flex-direction: column; overflow: hidden; font-family: Consolas, "Courier New", monospace; }
+
+/* VS Code 风格顶部菜单栏 */
+#top-menu-bar {
+    height: 36px;
+    min-height: 36px;
+    background-color: var(--menu-bg);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--menu-border);
+    z-index: 50;
+    padding: 0 8px;
+}
+
+#menu-bar-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+#logo {
+    height: 20px;
+    margin-right: 12px;
+}
+
+.menu-item {
+    color: var(--menu-text);
+    font-size: 14px;
+    padding: 4px 8px;
+    cursor: pointer;
+    border-radius: 2px;
+    user-select: none;
+}
+
+.menu-item:hover {
+    background-color: var(--menu-hover);
+}
+
+#menu-bar-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+#menu-bar-center {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    color: var(--menu-text);
+    font-size: 14px;
+    margin: 0 10px;
+}
+
+.current-file {
+    color: var(--menu-text);
+    font-size: 14px;
+    font-weight: bold;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 200px;
+}
+
+.tool-btn {
+    background-color: #000;
+    color: var(--menu-text);
+    border: none;
+    border-radius: 4px;
+    width: 32px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 14px;
+    padding: 0;
+}
+
+.tool-btn img {
+    width: 16px;
+    height: 16px;
+    max-width: 100%;
+    max-height: 100%;
+}
+
+#run-btn {
+    background: none;
+    border: none;
+    padding: 0;
+    width: auto;
+    height: auto;
+}
+
+#run-btn img {
+    width: 20px;
+    height: 20px;
+}
+
+#luogu-btn {
+    background: none;
+    border: none;
+    padding: 0;
+    width: auto;
+    height: auto;
+}
+
+#luogu-btn img {
+    width: 20px;
+    height: 20px;
+}
+
+/* 下拉菜单样式 */
+.dropdown-menu {
+    position: absolute;
+    top: 36px;
+    left: 0;
+    background-color: var(--dropdown-bg);
+    border: 1px solid var(--dropdown-border);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    min-width: 180px;
+    z-index: 100;
+}
+
+.dropdown-item {
+    padding: 6px 12px;
+    color: var(--menu-text);
+    cursor: pointer;
+    user-select: none;
+    font-size: 14px;
+}
+
+.dropdown-item:hover {
+    background-color: var(--dropdown-item-hover);
+}
+
+.dropdown-divider {
+    height: 1px;
+    background-color: var(--dropdown-border);
+    margin: 4px 0;
+}
+
+/* 左侧边栏 */
+#left-sidebar {
+    position: fixed;
+    top: 36px;
+    left: 0;
+    width: 40px;
+    height: calc(100vh - 36px);
+    background-color: var(--sidebar-bg);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-top: 12px;
+    z-index: 40;
+    border-right: 1px solid var(--sidebar-border);
+}
+
+.sidebar-button {
+    width: 32px;
+    height: 32px;
+    background-color: var(--sidebar-btn-bg);
+    color: var(--menu-text);
+    border: none;
+    border-radius: 4px;
+    font-size: 16px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    margin-bottom: 8px;
+    user-select: none;
+}
+
+.sidebar-button:hover {
+    background-color: var(--sidebar-btn-hover);
+}
+
+/* 虚拟文件系统面板 */
+.vfs-panel {
+    position: fixed;
+    top: 36px;
+    left: 40px;
+    width: 250px;
+    height: calc(100vh - 36px);
+    background-color: var(--panel-bg);
+    border-right: 1px solid var(--panel-border);
+    z-index: 30;
+    display: none;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.vfs-header {
+    height: 36px;
+    background-color: var(--panel-header-bg);
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+    border-bottom: 1px solid var(--panel-border);
+    font-size: 14px;
+    color: var(--menu-text);
+}
+
+.vfs-close-btn {
+    margin-left: auto;
+    background: none;
+    border: none;
+    color: var(--menu-text);
+    font-size: 16px;
+    cursor: pointer;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.vfs-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px;
+}
+
+.vfs-root {
+    margin-bottom: 8px;
+}
+
+.vfs-folder, .vfs-file {
+    padding: 4px 8px;
+    margin: 2px 0;
+    border-radius: 2px;
+    cursor: pointer;
+    user-select: none;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--text-color);
+}
+
+.vfs-folder:hover, .vfs-file:hover {
+    background-color: var(--panel-hover);
+}
+
+.vfs-folder::before {
+    content: "📁";
+    font-size: 14px;
+}
+
+.vfs-file::before {
+    content: "📄";
+    font-size: 14px;
+}
+
+/* 3行预览区 (Flex列布局，内部包含行号+文本) */
+#lines-container {
+    height: 80px;
+    min-height: 80px;
+    background-color: var(--editor-bg);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    overflow: hidden;
+    padding: 5px 0;
+    border-bottom: 2px solid var(--panel-border);
+    margin-left: 40px; /* 为侧边栏留出空间 */
+}
+
+.line-wrapper {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    height: 22px;
+}
+.line-wrapper.current {
+    height: 26px;
+    background-color: rgba(255,255,255,0.05);
+}
+
+/* 键盘模式下的行号 */
+.line-number {
+    width: 40px; min-width: 40px;
+    text-align: right; padding-right: 10px;
+    color: #555; font-size: 12px; font-family: Consolas, monospace;
+    user-select: none; border-right: 1px solid var(--border-color); margin-right: 8px;
+    background-color: var(--bg-color); height: 100%; line-height: 22px;
+}
+.line-wrapper.current .line-number {
+    color: var(--text-color); font-weight: bold; font-size: 14px; line-height: 26px;
+}
+
+.line-view {
+    flex: 1; white-space: pre; overflow: hidden; font-size: 14px; color: var(--dim-color); line-height: 22px; tab-size: 4;
+}
+.line-view.current {
+    color: var(--text-color); font-size: 16px; line-height: 26px; font-weight: bold; overflow-x: auto; scrollbar-width: none;
+}
+.line-view.current::-webkit-scrollbar { display: none; }
+
+.cursor { display: inline-block; width: 2px; height: 18px; background-color: #0f0; animation: blink 1s step-end infinite; vertical-align: text-bottom; margin-bottom: 3px; }
+@keyframes blink { 50% { opacity: 0; } }
+
+/* 编辑器区域 */
+#editor-area {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+    position: relative;
+    margin-left: 40px; /* 为侧边栏留出空间 */
+}
+
+#editor-container {
+    flex: 1;
+    height: 100%;
+}
+
+/* 模态框 */
+#input-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: var(--modal-overlay); z-index: 300; justify-content: center; align-items: center; backdrop-filter: blur(2px); }
+.modal-content { background-color: var(--modal-bg); width: 85%; max-width: 400px; border: 1px solid var(--modal-border); border-radius: 6px; padding: 15px; display: flex; flex-direction: column; box-shadow: 0 10px 25px var(--modal-shadow); }
+.modal-header { color: var(--text-color); font-weight: bold; margin-bottom: 10px; font-size: 14px; }
+#modal-textarea { background-color: var(--input-bg); color: var(--input-text); border: 1px solid var(--input-border); border-radius: 4px; padding: 8px; font-family: Consolas, monospace; font-size: 14px; height: 150px; resize: none; outline: none; user-select: text; -webkit-user-select: text; }
+.modal-footer { display: flex; justify-content: flex-end; margin-top: 15px; gap: 10px; }
+.modal-btn { padding: 8px 16px; border: none; border-radius: 3px; font-size: 14px; cursor: pointer; color: var(--text-color); }
+#modal-cancel { background-color: var(--btn-secondary); }
+#modal-run { background-color: var(--btn-primary); }
+
+/* 快速设置弹窗样式优化 */
+#preferences-setup-modal .modal-content {
+    max-width: 500px;
+    max-height: 90vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
+}
+
+#preferences-setup-modal .modal-body {
+    max-height: 70vh;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 20px;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
+    overscroll-behavior: contain;
+}
+
+#preferences-setup-modal .modal-footer {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: 15px;
+    flex-shrink: 0;
+}
+
+#preferences-setup-modal .modal-footer .modal-btn {
+    flex: 1;
+    padding: 10px 16px;
+}
+
+/* 快速设置内容区域优化 */
+#prefs-setup-content {
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
+}
+
+/* 设备类型和主题按钮优化 */
+#prefs-setup-content button {
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+}
+
+/* 输出面板 - 已废弃，使用终端面板替代 */
+/* #output-panel { ... } */
+
+/* 统一终端面板 - GDB 终端风格 */
+#terminal-panel {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 30%;
+    min-height: 150px;
+    background-color: var(--terminal-bg);
+    border-top: 2px solid var(--terminal-border-color);
+    z-index: 200;
+    display: none;
+    flex-direction: column;
+    box-shadow: 0 -5px 20px rgba(0,0,0,0.5);
+    transition: height 0.1s ease;
+}
+
+#terminal-header {
+    height: 35px;
+    background-color: var(--terminal-header-bg);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 10px;
+    border-bottom: 1px solid var(--panel-border);
+    color: var(--text-color);
+    font-size: 14px;
+    cursor: ns-resize;
+    user-select: none;
+}
+
+#terminal-header-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+#terminal-header-right {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+/* 终端标签页 */
+.terminal-tabs {
+    display: flex;
+    gap: 0;
+}
+
+.terminal-tab {
+    background: transparent;
+    border: none;
+    color: #969696;
+    padding: 8px 16px;
+    cursor: pointer;
+    font-size: 13px;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+}
+
+.terminal-tab:hover {
+    color: var(--text-color);
+    background-color: var(--terminal-tab-hover);
+}
+
+.terminal-tab.active {
+    color: var(--text-color);
+    border-bottom-color: var(--terminal-tab-active);
+    background-color: var(--terminal-bg);
+}
+
+#terminal-container {
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+}
+
+.terminal-content {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    overflow: hidden;
+}
+
+.terminal-content-body {
+    height: 100%;
+    padding: 10px;
+    overflow-y: auto;
+    font-family: Consolas, monospace;
+    font-size: 13px;
+    white-space: pre-wrap;
+    color: var(--terminal-text);
+    user-select: text;
+    -webkit-user-select: text;
+    cursor: text;
+}
+
+/* 终端面板调整大小手柄 */
+#terminal-resizer {
+    height: 3px;
+    background: var(--terminal-border-color);
+    cursor: ns-resize;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    border-bottom: 1px solid var(--panel-border);
+    z-index: 10;
+}
+
+/* 调试输入行 */
+#debug-input-line {
+    background: var(--terminal-header-bg) !important;
+    border-top-color: var(--panel-border) !important;
+}
+
+/* 最小化状态 */
+#terminal-panel.minimized #terminal-container,
+#terminal-panel.minimized #debug-input-line {
+    display: none;
+}
+
+#terminal-panel.minimized {
+    height: 36px !important;
+    min-height: 36px !important;
+}
+.out-section { margin-bottom: 10px; }
+.out-title { color: var(--hl-kw); font-weight: bold; margin-bottom: 4px; display: block; }
+.out-err { color: #f48771; } .out-warn { color: #cca700; } .out-res { color: var(--text-color); } .out-stat { color: #6a9955; font-size: 12px; font-style: italic; border-top: 1px solid var(--panel-border); margin-top: 5px; padding-top: 5px;}
+
+/* 高亮 */
+.hl-kw { color: var(--hl-kw); font-weight: bold; } .hl-str { color: var(--hl-str); } .hl-com { color: var(--hl-com); } .hl-dir { color: var(--hl-dir); } .hl-num { color: var(--hl-num); }
+
+/* 回车键默认样式 */
+.key.highlight {
+    background-color: var(--accent-color);
+    color: #fff;
+}
+
+/* 键盘 */
+#keyboard-container {
+    position: fixed;
+    bottom: 0;
+    left: 40px; /* 从侧边栏右边开始 */
+    right: 0;
+    height: 200px;
+    display: flex;
+    flex-direction: column;
+    padding: 2px;
+    justify-content: space-between;
+    background-color: var(--bg-color);
+    border-top: 1px solid var(--panel-border);
+    z-index: 100;
+    margin-left: 0; /* 重置可能的左边距 */
+}
+.row { display: flex; width: 100%; height: 20%; margin-bottom: 2px; }
+.key { background-color: var(--key-bg); color: var(--text-color); border: 1px solid var(--border-color); border-radius: 4px; margin: 0 1px; display: flex; justify-content: center; align-items: center; font-size: 14px; font-weight: bold; flex-grow: 1; position: relative; box-shadow: 0 2px 0 #000; }
+.key:active, .key.active { background-color: var(--key-active); transform: translateY(2px); box-shadow: none; }
+.key.shift-hold { background-color: var(--key-shift-active); border-color: var(--accent-color); }
+.key.ctrl-hold { background-color: var(--key-ctrl-active); border-color: #0f0; }
+.key-content { display: flex; flex-direction: column; alignItems: center; line-height: 1; pointer-events: none; }
+.sup { font-size: 9px; color: #888; margin-bottom: 2px; } .main { font-size: 14px; }
+.shifted .sup { color: var(--text-color); font-size: 14px; } .shifted .main { color: #666; font-size: 9px; } .alpha-key .sup { display: none; }
+.w-1 { flex: 1; } .w-1-5 { flex: 1.5; } .w-2 { flex: 2; } .w-2-25 { flex: 2.25; } .w-space { flex: 6; }
+.spacer { flex: 1; visibility: hidden; } .spacer-1-5 { flex: 1.5; visibility: hidden; } .spacer-sm { flex: 0.2; visibility: hidden; }
+.mod { background-color: var(--key-bg); font-size: 11px; } .nav-key { background-color: var(--sidebar-bg); } .hide-keyboard { display: none !important; }
+/* 图标按钮样式 */
+.icon-btn {
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    max-width: 100%;
+    max-height: 100%;
+}
+
+.sidebar-button img {
+    width: 20px;
+    height: 20px;
+    pointer-events: none; /* 防止图片影响点击事件 */
+    transition: transform 0.2s ease; /* 添加过渡效果 */
+}
+
+.sidebar-button.vfs-open img {
+    transform: rotate(180deg); /* 当面板打开时旋转图标 */
+}
+
+.sidebar-button.plugin-center-open img {
+    transform: rotate(180deg); /* 当插件中心面板打开时旋转图标 */
+}
+
+.sidebar-button.cph-open img {
+    transform: rotate(180deg); /* 当CPH面板打开时旋转图标 */
+}
+
+/* 插件中心样式 */
+.plugin-item {
+    margin-bottom: 15px;
+    padding: 10px;
+    border: 1px solid var(--plugin-border);
+    border-radius: 4px;
+    background-color: var(--plugin-bg);
+}
+
+.plugin-header {
+    font-weight: bold;
+    color: var(--plugin-header-color);
+    margin-bottom: 8px;
+    font-size: 14px;
+}
+
+.plugin-settings {
+    padding-left: 10px;
+}
+
+.plugin-actions {
+    margin-top: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.plugin-btn {
+    padding: 6px 12px;
+    background-color: var(--btn-primary);
+    color: #fff;
+    border: none;
+    border-radius: 3px;
+    font-size: 13px;
+    cursor: pointer;
+    text-align: center;
+}
+
+.plugin-btn:hover {
+    background-color: var(--btn-primary-hover);
+}
+
+.setting-item {
+    margin: 8px 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.setting-item label {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--menu-text);
+    font-size: 13px;
+}
+
+.setting-item input[type="number"] {
+    width: 80px;
+    padding: 3px 6px;
+    background-color: var(--input-bg);
+    color: var(--input-text);
+    border: 1px solid var(--input-border);
+    border-radius: 3px;
+    font-size: 12px;
+}
+
+@media screen and (orientation: portrait) { .key { font-size: 11px; } .sup { font-size: 8px; } .main { font-size: 11px; } }
+
+/* 关于弹窗样式 */
+.modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: var(--modal-overlay);
+    z-index: 1000;
+    justify-content: center;
+    align-items: center;
+}
+
+.about-modal, .preferences-modal {
+    width: 80%;
+    max-width: 600px;
+    max-height: 80vh;
+    background-color: var(--modal-bg);
+    border: 1px solid var(--modal-border);
+    border-radius: 6px;
+    box-shadow: 0 10px 25px var(--modal-shadow);
+    overflow-y: auto;
+}
+
+.modal-header {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 20px;
+    border-bottom: 1px solid var(--modal-border);
+    background-color: var(--modal-header-bg);
+}
+
+.modal-header h2 {
+    margin: 0;
+    color: var(--text-color);
+    font-size: 18px;
+}
+
+.close-btn {
+    font-size: 24px;
+    color: var(--text-color);
+    cursor: pointer;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+}
+
+.close-btn:hover {
+    background-color: var(--menu-hover);
+}
+
+.modal-body {
+    padding: 20px;
+    color: var(--text-color);
+    line-height: 1.6;
+}
+
+.modal-body p {
+    margin: 10px 0;
+}
+
+.modal-body a {
+    color: var(--link-color);
+    text-decoration: none;
+}
+
+.modal-body a:hover {
+    text-decoration: underline;
+}
+
+/* 首选项弹窗特殊样式 */
+.preferences-modal .modal-body {
+    touch-action: pan-y;
+}
+
+
+
+.preferences-modal .setting-item {
+    margin-bottom: 15px;
+}
+
+.preferences-modal .setting-item label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+    color: var(--text-color);
+}
+
+.preferences-modal textarea#default-code-editor {
+    width: 100%;
+    height: 200px;
+    background-color: var(--input-bg);
+    color: var(--input-text);
+    border: 1px solid var(--input-border);
+    border-radius: 4px;
+    padding: 8px;
+    font-family: Consolas, monospace;
+    font-size: 14px;
+    resize: vertical;
+    box-sizing: border-box;
+}
+
+/* 首选项弹窗按钮样式 */
+.preferences-modal .modal-footer .modal-btn {
+    color: var(--text-color); /* 使用主题变量 */
+}
+
+.preferences-modal .modal-footer #reset-default-code {
+    background-color: #3e3e42; /* 灰色背景 */
+}
+
+.preferences-modal .modal-footer #cancel-preferences {
+    background-color: #3e3e42; /* 灰色背景 */
+}
+
+.preferences-modal .modal-footer #save-preferences {
+    background-color: #0e639c; /* 蓝色背景 */
+}
+
+/* 移动端代码补全样式 */
+#mobile-autocomplete-container {
+    display: flex;
+    background-color: var(--input-bg);
+    color: var(--input-text);
+    height: 40px;
+    align-items: center;
+    padding: 0 10px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    white-space: nowrap;
+    border-top: 1px solid var(--panel-border);
+    z-index: 99;
+    position: fixed;
+    bottom: 200px;  /* 键盘高度是200px，所以补全框在键盘上方 */
+    left: 40px;     /* 从侧边栏右边开始 */
+    right: 0;
+}
+
+/* 当键盘被隐藏时，补全框也应该隐藏 */
+#keyboard-container.hide-keyboard ~ #mobile-autocomplete-container {
+    display: none !important;
+}
+
+.mobile-autocomplete-item {
+    color: #d4d4d4;
+    margin: 0 8px;
+    cursor: pointer;
+    user-select: none;
+}
+
+.mobile-autocomplete-item:hover {
+    text-decoration: underline;
+}
+
+/* 移动端滚动按钮样式 */
+.up-btn-mobile, .down-btn-mobile {
+    position: fixed;
+    width: 40px;
+    height: 40px;
+    background-color: rgba(14, 99, 156, 0.8);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    cursor: pointer;
+    z-index: 102;
+    font-size: 20px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+    user-select: none;
+}
+
+.up-btn-mobile {
+    top: 60px;
+    right: 20px;
+}
+
+.down-btn-mobile {
+    bottom: 80px;
+    right: 20px;
+}
+
+/* CPH插件样式 */
+.cph-controls {
+    padding: 10px;
+    border-bottom: 1px solid #444;
+}
+
+.cph-problem-set {
+    margin-bottom: 10px;
+    border: 1px solid #444;
+    border-radius: 4px;
+    background-color: #2d2d30;
+}
+
+.cph-problem-set-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px;
+    background-color: #3c3c40;
+    border-bottom: 1px solid #444;
+    border-radius: 4px 4px 0 0;
+}
+
+.cph-problem-set-name {
+    font-weight: bold;
+    color: var(--text-color);
+}
+
+.cph-problem-set-actions {
+    display: flex;
+    gap: 5px;
+}
+
+.cph-test-cases-container {
+    padding: 8px;
+}
+
+.cph-test-case {
+    margin-bottom: 10px;
+    border: 1px solid #444;
+    border-radius: 4px;
+    background-color: #252526;
+}
+
+.cph-test-case-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 8px;
+    background-color: var(--panel-header-bg);
+    border-bottom: 1px solid var(--panel-border);
+}
+
+.cph-test-case-name {
+    font-weight: bold;
+    color: var(--text-color);
+}
+
+.cph-test-case-actions {
+    display: flex;
+    gap: 5px;
+}
+
+.cph-test-case-content {
+    padding: 8px;
+}
+
+.cph-test-case-input, .cph-test-case-output {
+    margin-bottom: 8px;
+}
+
+.cph-test-case-input label, .cph-test-case-output label {
+    display: block;
+    margin-bottom: 4px;
+    color: var(--dim-color);
+    font-size: 13px;
+}
+
+.cph-test-case-textarea, .cph-test-case-textarea-main {
+    width: 100%;
+    height: 60px;
+    background-color: var(--input-bg);
+    color: var(--input-text);
+    border: 1px solid var(--input-border);
+    border-radius: 3px;
+    padding: 6px;
+    font-family: Consolas, monospace;
+    font-size: 12px;
+    resize: vertical;
+    box-sizing: border-box;
+}
+
+.cph-test-case-actions-bottom {
+    padding: 8px;
+    border-top: 1px solid var(--panel-border);
+    text-align: center;
+}
+
+.cph-test-case-actions-top {
+    padding: 8px;
+    border-bottom: 1px solid var(--panel-border);
+    text-align: center;
+    margin-bottom: 8px;
+}
+
+.btn-small {
+    padding: 4px 8px;
+    background-color: var(--btn-primary);
+    color: #fff;
+    border: none;
+    border-radius: 3px;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.btn-small:hover {
+    background-color: var(--btn-primary-hover);
+}
+
+.cph-empty-state, .cph-empty-test-cases {
+    padding: 10px;
+    color: var(--dim-color);
+    font-style: italic;
+    text-align: center;
+}
+
+.sidebar-button.active {
+    background-color: #007acc;
+}
+
+.plugin-description {
+    color: #aaaaaa;
+    font-size: 13px;
+    margin-bottom: 8px;
+}
+
+/* CPH管理所有题目样式 */
+.cph-all-files-container {
+    margin-top: 10px;
+    padding: 10px;
+    border-top: 1px solid #444;
+}
+
+.cph-all-files-container h3 {
+    margin: 0 0 10px 0;
+    color: var(--text-color);
+    font-size: 14px;
+}
+
+.cph-all-files-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.cph-file-item {
+    margin-bottom: 8px;
+    padding: 8px;
+    border: 1px solid #444;
+    border-radius: 4px;
+    background-color: #252526;
+}
+
+.cph-file-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+}
+
+.cph-file-name {
+    font-weight: bold;
+    color: var(--text-color);
+}
+
+.cph-file-actions {
+    display: flex;
+    gap: 5px;
+}
+
+.cph-file-info {
+    font-size: 12px;
+    color: #888888;
+    padding-left: 20px;
+}
+
+/* 调试功能样式 - 已废弃，使用终端面板替代 */
+/* #debug-panel { ... } */
+/* #debug-resizer { ... } */
+/* #debug-terminal-container { ... } */
+/* #debug-command-input { ... } */
+/* #debug-panel.minimized { ... } */
+
+/* 终端面板调试按钮样式 */
+.debug-header-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-color);
+    font-size: 18px;
+    cursor: pointer;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 3px;
+}
+
+.debug-header-btn:hover {
+    background-color: var(--menu-hover);
+}
+
+#terminal-close-btn:hover {
+    background-color: #c42b1c;
+}
+
+/* 调试状态提示框 */
+#debug-status-message {
+    line-height: 1.6;
+}
+
+/* 调试按钮激活状态 */
+.sidebar-button.debug-active {
+    background-color: #4daafc;
+}
+
+/* GDB 输出颜色 */
+.debug-output-info {
+    color: #4daafc;
+}
+
+.debug-output-warning {
+    color: #cca700;
+}
+
+.debug-output-error {
+    color: #f48771;
+}
+
+.debug-output-success {
+    color: #6a9955;
+}
+
+/* ========== 断点功能样式 ========== */
+
+/* 断点 - 在行号前显示（无断点时悬停显示淡红色背景） */
+.breakpoints {
+    width: 10px !important;
+    height: 10px !important;
+    left: 5px !important;
+    top: 5px;
+    border-radius: 50%;
+    display: inline-block;
+    cursor: pointer;
+}
+
+.breakpoints:hover {
+    background-color: rgba(255, 0, 0, 0.5);
+}
+
+/* 断点激活状态（红色圆点） */
+.breakpoints-active {
+    width: 10px !important;
+    height: 10px !important;
+    left: 5px !important;
+    top: 5px;
+    background-color: #e51400;
+    border-radius: 50%;
+    display: inline-block;
+    cursor: pointer;
+    z-index: 5;
+}
+
+.breakpoints-active:hover {
+    background-color: #ff6b6b;
+}
+
+/* 当前执行行高亮（黄色背景） */
+.debug-execution-line {
+    background-color: rgba(255, 255, 0, 0.2) !important;
+}
+
+.debug-execution-line-text {
+    font-weight: bold;
+}
+
+/* 断点命中高亮（橙色闪烁） */
+@keyframes breakpoint-hit-flash {
+    0%, 100% { background-color: rgba(255, 165, 0, 0.2); }
+    50% { background-color: rgba(255, 165, 0, 0.5); }
+}
+
+.debug-breakpoint-hit {
+    animation: breakpoint-hit-flash 0.5s ease-in-out 3;
+}
+
+/* ========== 调试 UI 控制区样式 ========== */
+
+/* 调试控制按钮 */
+.debug-control-btn {
+    background-color: var(--sidebar-btn-bg);
+    border: 1px solid var(--input-border);
+    color: var(--menu-text);
+    padding: 8px 5px;
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s ease;
+    font-size: 12px;
+}
+
+.debug-control-btn:hover {
+    background-color: var(--menu-hover);
+    border-color: var(--accent-color);
+    color: var(--text-color);
+}
+
+.debug-control-btn:active {
+    background-color: var(--accent-color);
+}
+
+.debug-control-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* 调试小按钮（添加/移除变量） */
+.debug-small-btn {
+    background-color: var(--sidebar-btn-bg);
+    border: 1px solid var(--input-border);
+    color: var(--menu-text);
+    width: 24px;
+    height: 24px;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s ease;
+}
+
+.debug-small-btn:hover {
+    background-color: var(--menu-hover);
+    border-color: var(--accent-color);
+    color: var(--text-color);
+}
+
+.debug-small-btn:active {
+    background-color: var(--accent-color);
+}
+
+/* 变量列表项 */
+.debug-variable-item {
+    display: flex;
+    align-items: flex-start;
+    padding: 4px 6px;
+    margin-bottom: 2px;
+    border-radius: 3px;
+    cursor: pointer;
+    font-family: Consolas, monospace;
+    font-size: 12px;
+    white-space: nowrap;
+    color: var(--text-color);
+}
+
+.debug-variable-item:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+.debug-variable-item.selected {
+    background-color: rgba(0, 122, 204, 0.3);
+}
+
+.debug-variable-item.expanded {
+    white-space: pre-wrap;
+    word-break: break-all;
+    min-height: auto;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.debug-var-name {
+    color: #9cdcfe;
+    margin-right: 8px;
+    flex-shrink: 0;
+}
+
+.debug-var-value {
+    color: #ce9178;
+    word-break: break-all;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.debug-variable-item.expanded .debug-var-value {
+    white-space: pre-wrap;
+    overflow: visible;
+    text-overflow: clip;
+}
+
+.debug-var-type {
+    color: #4ec9b0;
+    font-size: 11px;
+    margin-left: 8px;
+    white-space: nowrap;
+}
+
+/* 变量列表容器 */
+#debug-variables-list {
+    overflow-y: auto;
+    max-height: none;
+}
+
+/* 添加变量对话框 */
+.debug-add-var-dialog {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.debug-add-var-dialog input {
+    background-color: var(--input-bg);
+    border: 1px solid var(--input-border);
+    color: var(--input-text);
+    padding: 8px;
+    border-radius: 3px;
+    font-family: Consolas, monospace;
+    font-size: 12px;
+    outline: none;
+}
+
+.debug-add-var-dialog input:focus {
+    border-color: var(--accent-color);
+}
+
+/* AI 自动调试面板样式 - 全窗口版本 */
+#aidebug-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: #1e1e1e;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    color: var(--text-color);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+#aidebug-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    width: 100%;
+}
+
+.aidebug-header {
+    height: 48px;
+    background-color: #2d2d2d;
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    border-bottom: 1px solid #444444;
+    font-size: 16px;
+    color: var(--plugin-header-color);
+    font-weight: 500;
+}
+
+.aidebug-close-btn {
+    margin-left: auto;
+    background: none;
+    border: none;
+    color: #999;
+    font-size: 24px;
+    cursor: pointer;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border-radius: 4px;
+    transition: all 0.2s;
+}
+
+.aidebug-close-btn:hover {
+    background-color: #444;
+    color: var(--text-color);
+}
+
+.aidebug-body {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+}
+
+.aidebug-left-panel,
+.aidebug-right-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.aidebug-left-panel {
+    border-right: 1px solid #333333;
+}
+
+.aidebug-panel-header {
+    height: 40px;
+    background-color: #252526;
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+    border-bottom: 1px solid #333333;
+    font-size: 14px;
+    color: #ddd;
+    font-weight: 500;
+}
+
+.aidebug-panel-header span:first-child {
+    flex: 1;
+}
+
+.aidebug-code-status {
+    font-size: 12px;
+    padding: 2px 8px;
+    border-radius: 3px;
+    background-color: #3c3c3c;
+    color: #888;
+}
+
+.aidebug-code-status-modified {
+    background-color: #d4a017;
+    color: #1e1e1e;
+}
+
+.aidebug-editor {
+    flex: 1;
+    overflow: hidden;
+}
+
+.aidebug-editor-actions {
+    height: 48px;
+    background-color: #252526;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 0 16px;
+    border-top: 1px solid #333333;
+}
+
+.aidebug-icon-btn {
+    background: none;
+    border: none;
+    color: #999;
+    font-size: 18px;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: all 0.2s;
+}
+
+.aidebug-icon-btn:hover {
+    background-color: #444;
+    color: var(--text-color);
+}
+
+.aidebug-config-panel {
+    background-color: #252526;
+    padding: 16px;
+    border-bottom: 1px solid #333333;
+}
+
+.aidebug-config-form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.aidebug-form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.aidebug-form-group label {
+    font-size: 12px;
+    color: #aaa;
+}
+
+.aidebug-form-group input {
+    padding: 8px 12px;
+    background-color: #2d2d2d;
+    border: 1px solid #444;
+    border-radius: 4px;
+    color: #ddd;
+    font-size: 13px;
+}
+
+.aidebug-form-group input:focus {
+    outline: none;
+    border-color: #007acc;
+}
+
+.aidebug-problem-section {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 16px;
+    gap: 12px;
+    overflow: hidden;
+}
+
+#aidebug-problem {
+    flex: 1;
+    padding: 12px;
+    background-color: #2d2d2d;
+    border: 1px solid #444;
+    border-radius: 4px;
+    color: #ddd;
+    font-size: 14px;
+    resize: none;
+    font-family: Consolas, monospace;
+}
+
+#aidebug-problem:focus {
+    outline: none;
+    border-color: #007acc;
+}
+
+.aidebug-chat-section {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.aidebug-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.aidebug-message {
+    background-color: #2d2d2d;
+    border-radius: 8px;
+    padding: 12px;
+    max-width: 100%;
+}
+
+.aidebug-message-system {
+    border-left: 3px solid #007acc;
+}
+
+.aidebug-message-user {
+    border-left: 3px solid #4caf50;
+    background-color: #1e2e1e;
+}
+
+.aidebug-message-assistant {
+    border-left: 3px solid #9c27b0;
+    background-color: #1e1e2e;
+}
+
+.aidebug-message-role {
+    font-size: 11px;
+    color: #888;
+    margin-bottom: 8px;
+    font-weight: 500;
+}
+
+.aidebug-message-content {
+    font-size: 14px;
+    line-height: 1.6;
+    word-wrap: break-word;
+    white-space: pre-wrap;
+}
+
+.aidebug-message-content .aidebug-code-block {
+    background-color: #1e1e1e;
+    padding: 12px;
+    border-radius: 4px;
+    overflow-x: auto;
+    margin: 8px 0;
+    font-family: Consolas, monospace;
+    font-size: 13px;
+    white-space: pre;
+}
+
+.aidebug-message-content .aidebug-inline-code {
+    background-color: #3c3c3c;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-family: Consolas, monospace;
+    font-size: 13px;
+}
+
+.aidebug-input-area {
+    display: flex;
+    gap: 8px;
+    padding: 12px 16px;
+    background-color: #252526;
+    border-top: 1px solid #333333;
+}
+
+.aidebug-input-area input {
+    flex: 1;
+    padding: 10px 14px;
+    background-color: #2d2d2d;
+    border: 1px solid #444;
+    border-radius: 4px;
+    color: #ddd;
+    font-size: 14px;
+}
+
+.aidebug-input-area input:focus {
+    outline: none;
+    border-color: #007acc;
+}
+
+.aidebug-actions {
+    display: flex;
+    gap: 8px;
+    padding: 8px 16px;
+    background-color: #252526;
+    border-top: 1px solid #333333;
+}
+
+.aidebug-btn {
+    padding: 8px 16px;
+    background-color: #3c3c3c;
+    border: none;
+    border-radius: 4px;
+    color: #ddd;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.aidebug-btn:hover:not(:disabled) {
+    background-color: #4c4c4c;
+}
+
+.aidebug-btn:active:not(:disabled) {
+    background-color: #2c2c2c;
+}
+
+.aidebug-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.aidebug-btn-primary {
+    background-color: #007acc;
+    color: #fff;
+}
+
+.aidebug-btn-primary:hover:not(:disabled) {
+    background-color: #005a9e;
+}
+
+.aidebug-btn-small {
+    padding: 6px 12px;
+    font-size: 12px;
+}
+
+.aidebug-btn-full {
+    width: 100%;
+}
+
+/* 滚动条样式 */
+.aidebug-messages::-webkit-scrollbar {
+    width: 8px;
+}
+
+.aidebug-messages::-webkit-scrollbar-track {
+    background: #1e1e1e;
+}
+
+.aidebug-messages::-webkit-scrollbar-thumb {
+    background: #444;
+    border-radius: 4px;
+}
+
+.aidebug-messages::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
+/* ============================================
+   浅色模式全面覆盖样式
+   ============================================ */
+[data-theme="light"] {
+    /* 工具按钮 */
+    .tool-btn {
+        background-color: #e0e0e0;
+        color: #333;
+    }
+
+    /* 运行按钮 */
+    #run-btn {
+        background: none;
+    }
+
+    /* 3行预览区 */
+    #lines-container {
+        background-color: #f0f0f0;
+        border-bottom: 2px solid #ccc;
+    }
+
+    .line-wrapper.current {
+        background-color: #e8e8e8;
+    }
+
+    .line-number {
+        color: #888;
+        background-color: #f0f0f0;
+        border-right: 1px solid #ddd;
+    }
+
+    .line-wrapper.current .line-number {
+        color: #333;
+    }
+
+    .line-view {
+        color: #666;
+    }
+
+    .line-view.current {
+        color: #333;
+    }
+
+    .cursor {
+        background-color: #0078d4;
+    }
+
+    /* 编辑器区域 */
+    #editor-area {
+        background-color: #ffffff;
+    }
+
+    /* 终端面板 */
+    #terminal-panel {
+        background-color: #f5f5f5;
+        border-top-color: #0078d4;
+    }
+
+    #terminal-header {
+        background-color: #f0f0f0;
+        border-bottom-color: #ddd;
+        color: #333;
+    }
+
+    .terminal-tab {
+        color: #666;
+    }
+
+    .terminal-tab:hover {
+        color: #333;
+        background-color: #e8e8e8;
+    }
+
+    .terminal-tab.active {
+        color: #333;
+        border-bottom-color: #0078d4;
+        background-color: #f5f5f5;
+    }
+
+    .terminal-content-body {
+        color: #333;
+    }
+
+    /* 输出样式 */
+    .out-title {
+        color: #0000ff;
+    }
+
+    .out-err {
+        color: #d13438;
+    }
+
+    .out-warn {
+        color: #9d6b00;
+    }
+
+    .out-res {
+        color: #333;
+    }
+
+    .out-stat {
+        color: #107c10;
+        border-top-color: #ddd;
+    }
+
+    /* 键盘样式 */
+    #keyboard-container {
+        background-color: #f0f0f0;
+        border-top: 1px solid #ddd;
+    }
+
+    .row {
+        margin-bottom: 2px;
+    }
+
+    .key {
+        background-color: #e0e0e0;
+        color: #333;
+        border: 1px solid #ccc;
+        box-shadow: 0 2px 0 #bbb;
+    }
+
+    .key:active,
+    .key.active {
+        background-color: #c0c0c0;
+        box-shadow: none;
+    }
+
+    .key.shift-hold {
+        background-color: #0078d4;
+        border-color: #005a9e;
+    }
+
+    .key.ctrl-hold {
+        background-color: #0078d4;
+        border-color: #005a9e;
+    }
+
+    .sup {
+        color: #666;
+    }
+
+    .shifted .sup {
+        color: #333;
+    }
+
+    .shifted .main {
+        color: #999;
+    }
+
+    .mod {
+        background-color: #d0d0d0;
+    }
+
+    .nav-key {
+        background-color: #d8d8d8;
+    }
+
+    /* 侧边栏按钮 */
+    .sidebar-button {
+        background-color: #e0e0e0;
+        color: #333;
+    }
+
+    .sidebar-button:hover {
+        background-color: #d0d0d0;
+    }
+
+    .sidebar-button.active {
+        background-color: #0078d4;
+        color: #fff;
+    }
+
+    .sidebar-button.debug-active {
+        background-color: #c53030;
+        color: #fff;
+    }
+
+    /* 移动端补全 */
+    #mobile-autocomplete-container {
+        background-color: #ffffff;
+        color: #333;
+        border-top-color: #ddd;
+    }
+
+    .mobile-autocomplete-item {
+        color: #333;
+    }
+
+    /* VFS 文件项 */
+    .vfs-folder, .vfs-file {
+        color: #333;
+    }
+
+    .vfs-folder[data-path="/"] {
+        color: #333;
+    }
+
+    .vfs-file::before {
+        color: #333;
+    }
+
+    .vfs-folder:hover,
+    .vfs-file:hover {
+        background-color: #e0e0e0;
+    }
+
+    /* 插件项 */
+    .plugin-item {
+        background-color: #fafafa;
+        border-color: #ddd;
+    }
+
+    .plugin-description {
+        color: #666;
+    }
+
+    .plugin-header {
+        color: #333;
+    }
+
+    /* 设置项 */
+    .setting-item input[type="number"] {
+        background-color: #ffffff;
+        color: #333;
+        border-color: #ddd;
+    }
+
+    /* 调试控制 */
+    #debug-controls {
+        background-color: #f5f5f5;
+        border-bottom-color: #ddd;
+    }
+
+    #debug-variables-panel {
+        background-color: #f5f5f5;
+        border-bottom-color: #ddd;
+    }
+
+    #debug-input-line {
+        background: #f5f5f5 !important;
+        border-top-color: #ddd !important;
+    }
+
+    /* 调试状态弹窗 */
+    #debug-status-modal .modal-content {
+        background-color: #ffffff;
+    }
+
+    /* 教程弹窗 */
+    #tutorial-modal .modal-content {
+        background-color: #ffffff;
+    }
+
+    /* 快速设置弹窗 - 手机横屏优化 */
+    #preferences-setup-modal .modal-content {
+        max-width: 95vw;
+        max-height: 90vh;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        touch-action: pan-y;
+    }
+
+    #preferences-setup-modal .modal-body {
+        max-height: 70vh;
+        overflow-y: auto;
+        overflow-x: hidden;
+        padding: 15px;
+        -webkit-overflow-scrolling: touch;
+        touch-action: pan-y;
+        overscroll-behavior: contain;
+    }
+
+    #preferences-setup-modal .modal-footer .modal-btn {
+        padding: 12px 16px;
+        font-size: 14px;
+    }
+
+    /* 手机横屏下优化按钮布局 */
+    #prefs-setup-content button {
+        padding: 12px !important;
+        margin-bottom: 8px !important;
+    }
+
+    #prefs-setup-content .device-options,
+    #prefs-setup-content .theme-options {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    /* 关于弹窗 */
+    .about-modal,
+    .preferences-modal {
+        background-color: #ffffff;
+        border-color: #ddd;
+    }
+
+    .modal-header {
+        background-color: #f0f0f0;
+        border-bottom-color: #ddd;
+    }
+
+    .modal-header h2 {
+        color: #333;
+    }
+
+    .close-btn {
+        color: #333;
+    }
+
+    .close-btn:hover {
+        background-color: #e0e0e0;
+    }
+
+    .modal-body {
+        color: #333;
+    }
+
+    /* 首选项按钮 */
+    .preferences-modal .modal-footer #reset-default-code {
+        background-color: #e0e0e0;
+        color: #333;
+    }
+
+    .preferences-modal .modal-footer #cancel-preferences {
+        background-color: #e0e0e0;
+        color: #333;
+    }
+
+    /* 代码高亮覆盖 */
+    .hl-kw {
+        color: #0000ff !important;
+    }
+
+    .hl-str {
+        color: #a31515 !important;
+    }
+
+    .hl-com {
+        color: #008000 !important;
+    }
+
+    .hl-dir {
+        color: #af00db !important;
+    }
+
+    .hl-num {
+        color: #098658 !important;
+    }
+
+    /* 调试变量颜色 */
+    .debug-var-name {
+        color: #001080;
+    }
+
+    .debug-var-value {
+        color: #a31515;
+    }
+
+    .debug-var-type {
+        color: #0451a5;
+    }
+
+    /* 终端输出颜色覆盖 */
+    .out-err {
+        color: #d13438;
+    }
+
+    .out-warn {
+        color: #9d6b00;
+    }
+
+    /* 光标颜色 */
+    .cursor {
+        background-color: #0078d4;
+    }
+
+    /* 回车键浅色模式适配 */
+    .key.highlight {
+        background-color: var(--accent-color) !important;
+        color: #fff !important;
+    }
+    [data-theme="light"] .key.highlight {
+        background-color: #0078d4 !important;
+        color: #fff !important;
+    }
+
+    /* 文件管理器强制文字颜色 */
+    .vfs-file, .vfs-folder {
+        color: #333333 !important;
+    }
+
+    /* 滚动条 */
+    ::-webkit-scrollbar {
+        width: 10px;
+        height: 10px;
+    }
+
+    ::-webkit-scrollbar-track {
+        background: #f0f0f0;
+    }
+
+    ::-webkit-scrollbar-thumb {
+        background: #c0c0c0;
+        border-radius: 5px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+        background: #a0a0a0;
+    }
+
+    /* CPH 相关 */
+    .cph-problem-set {
+        background-color: #fafafa;
+        border-color: #ddd;
+    }
+
+    .cph-problem-set-header {
+        background-color: #f0f0f0;
+        border-bottom-color: #ddd;
+    }
+
+    .cph-problem-set-name {
+        color: #333;
+    }
+
+    .cph-test-case {
+        background-color: #f9f9f9;
+        border-color: #ddd;
+    }
+
+    .cph-test-case-header {
+        background-color: #f0f0f0;
+        border-bottom-color: #ddd;
+    }
+
+    .cph-test-case-name {
+        color: #333;
+    }
+
+    .cph-test-case-textarea,
+    .cph-test-case-textarea-main {
+        background-color: #ffffff;
+        color: #333;
+        border-color: #ddd;
+    }
+
+    .cph-empty-state,
+    .cph-empty-test-cases {
+        color: #666;
+    }
+
+    .btn-small {
+        background-color: #0078d4;
+    }
+
+    .btn-small:hover {
+        background-color: #106ebe;
+}
+
+/* Clangd download progress popup - using modal variables */
+.clangd-download-progress {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    width: 320px;
+    max-width: 90vw;
+    background-color: var(--modal-bg);
+    border: 1px solid var(--modal-border);
+    color: var(--text-color);
+    border-radius: 8px;
+    box-shadow: 0 4px 12px var(--modal-shadow);
+    z-index: 9999;
+    padding: 16px;
+    display: none;
+    animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+    from { opacity: 0; transform: translateY(-20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.clangd-download-progress.active {
+    display: block !important;
+}
+
+.clangd-download-progress.success {
+    border-left: 4px solid #4caf50;
+}
+
+.clangd-download-progress.error {
+    border-left: 4px solid #f48771;
+}
+
+.clangd-download-progress-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--modal-border);
+}
+
+.clangd-download-progress-title {
+    font-weight: bold;
+    font-size: 15px;
+    color: var(--text-color);
+}
+
+.clangd-download-progress-close {
+    background: none;
+    border: none;
+    color: var(--dim-color, #888);
+    font-size: 20px;
+    cursor: pointer;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+}
+
+.clangd-download-progress-close:hover {
+    background-color: var(--menu-hover, #444);
+    color: var(--text-color, #fff);
+}
+
+.clangd-download-progress-content {
+    margin-top: 8px;
+}
+
+.clangd-download-progress-bar {
+    height: 8px;
+    background-color: var(--bg-color, #1e1e1e);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-top: 8px;
+}
+
+.clangd-download-progress-fill {
+    height: 100%;
+    background-color: #0e639c;
+    border-radius: 4px;
+    width: 0%;
+    transition: width 0.3s ease;
+}
+
+.clangd-download-progress-success .clangd-download-progress-fill {
+    background-color: #4caf50;
+}
+
+.clangd-download-progress-text {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 8px;
+    font-size: 13px;
+    color: var(--dim-color, #888);
+}
+
+.clangd-download-progress-file {
+    font-size: 12px;
+    color: var(--dim-color, #666);
+    margin-top: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* AI Debug 样式 */
+    .aidebug-config-panel {
+        background-color: #fafafa;
+        border-color: #ddd;
+    }
+
+    .aidebug-config-panel-header {
+        background-color: #f0f0f0;
+        border-bottom-color: #ddd;
+        color: #333;
+    }
+
+    .aidebug-messages {
+        background-color: #ffffff;
+        color: #333;
+    }
+
+    .aidebug-message-user {
+        background-color: #e8f4fd;
+        color: #333;
+    }
+
+    .aidebug-message-ai {
+        background-color: #f5f5f5;
+        color: #333;
+    }
+
+    .aidebug-messages::-webkit-scrollbar-track {
+        background: #f0f0f0;
+    }
+
+    .aidebug-messages::-webkit-scrollbar-thumb {
+        background: #c0c0c0;
+    }
+
+    .aidebug-messages::-webkit-scrollbar-thumb:hover {
+        background: #a0a0a0;
+    }
+
+    .aidebug-btn-primary {
+        background-color: #0078d4;
+    }
+
+    .aidebug-btn-primary:hover:not(:disabled) {
+        background-color: #106ebe;
+    }
+}

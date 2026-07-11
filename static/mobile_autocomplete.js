@@ -652,11 +652,16 @@ class MobileAutocomplete {
             suggestions.forEach((suggestion, index) => {
                 const suggestionElement = document.createElement('span');
                 suggestionElement.className = 'mobile-autocomplete-item';
+                suggestionElement.style.touchAction = 'manipulation';
                 suggestionElement.textContent = suggestion;
 
                 // 添加点击事件
                 suggestionElement.addEventListener('click', (e) => {
                     e.stopPropagation();
+                    this.handleSuggestionClick(suggestion);
+                });
+                suggestionElement.addEventListener('touchend', (e) => {
+                    e.preventDefault();
                     this.handleSuggestionClick(suggestion);
                 });
 

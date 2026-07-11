@@ -100,18 +100,20 @@ class LightModel {
         const tableKey = n === 3 ? 'trigram' : n === 2 ? 'bigram' : 'unigram';
         const table = this.ngramTable[tableKey];
         
-        if (!table || !table[key]) {
-            // 回退到更低阶的 n-gram
+        if (!table || !(key in table)) {
             if (n > 1) {
                 return this.getNGramProb(tokens.slice(1), n - 1);
             }
-            return 0.01; // 平滑值
+            return 0.01;
         }
         
-        // 计算概率（归一化）
-        const counts = Object.values(table[key]);
-        const total = counts.reduce((a, b) => a + b, 0);
-        return counts[0] / total;
+        const entry = table[key];
+        if (typeof entry === 'number') {
+            const total = Object.values(table).reduce((a, b) => a + b, 0);
+            return entry / total;
+        }
+        const total = entry.reduce((a, b) => a + b, 0);
+        return entry[0] / total;
     }
 
     /**

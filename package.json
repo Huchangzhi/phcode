@@ -1,25 +1,24 @@
 {
-  "name": "phcode-api-cf-worker",
-  "version": "1.0.0",
-  "description": "PH Code API running on Cloudflare Workers",
-  "main": "worker/index.js",
-  "scripts": {
-    "predeploy": "node -e \"const fse = require('fs-extra'); if(fse.existsSync('./dist')) fse.removeSync('./dist'); fse.mkdirSync('./dist', { recursive: true }); fse.copySync('./static', './dist/static'); fse.copySync('./templates/index.html', './dist/index.html'); fse.copySync('./templates/easyrun.html', './dist/easyrun.html');\"",
-    "deploy": "wrangler deploy",
-    "dev": "wrangler dev"
-  },
-  "keywords": [
-    "cloudflare",
-    "workers",
-    "api",
-    "cpp",
-    "compiler"
-  ],
-  "author": "PH Code",
+  "name": "phoi-monorepo",
+  "version": "3.0.0",
+  "private": true,
   "license": "MIT",
+  "description": "PHOI monorepo - Programmer's Helper Online IDE",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm -w packages/shared run build && npm run build --workspaces --if-present",
+    "dev:frontend": "npm -w packages/frontend run dev",
+    "dev:server": "npm -w packages/server run dev",
+    "dev:desktop": "npm -w packages/desktop run dev",
+    "dev:cf": "npm -w packages/cf-worker run dev",
+    "clean": "npm run clean --workspaces --if-present"
+  },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20231218.0",
-    "fs-extra": "^11.1.0",
-    "wrangler": "^3.0.0"
+    "typescript": "^5.5.0"
   }
 }

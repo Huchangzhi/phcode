@@ -745,9 +745,9 @@ function displayLuoguProblem(problemData) {
     // 先添加滚动容器，再添加关闭按钮（确保关闭按钮在最上层）
     problemDisplay.appendChild(scrollContainer);
 
-    // 重新添加关闭按钮（如果之前存在），确保它在 scrollContainer 之后，这样 z-index 才能生效
+    // 移除原有关闭按钮，由下面的新关闭按钮替代（避免重复）
     if (existingCloseBtn) {
-        problemDisplay.appendChild(existingCloseBtn);
+        existingCloseBtn.remove();
     }
 
     // 难度标签

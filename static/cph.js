@@ -831,9 +831,10 @@ function checkCompetitiveCompanionData() {
         if (companionPollFailureCount >= MAX_COMPANION_FAILURES) {
             console.log('Competitive Companion轮询失败次数过多，停止轮询');
             clearInterval(companionPollInterval);
+            companionPollInterval = null;
         }
     });
 }
 
 // 每2秒检查一次是否有新的Competitive Companion数据
-const companionPollInterval = setInterval(checkCompetitiveCompanionData, 2000);
+let companionPollInterval = setInterval(checkCompetitiveCompanionData, 2000);

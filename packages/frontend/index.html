@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>PH code</title>
+    <link rel="icon" href="/static/logo.png" type="image/x-icon">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<script>
+(function() {
+    var key = 'phoi_color_theme';
+    var saved = localStorage.getItem(key) || 'dark';
+    var light = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)');
+    var actual = saved === 'auto' ? (light && light.matches ? 'light' : 'dark') : saved;
+    document.documentElement.setAttribute('data-theme', actual);
+    document.documentElement.style.setProperty('--splash-bg', actual === 'light' ? '#ffffff' : '#1e1e1e');
+    window.getActualTheme = function() {
+        var t = localStorage.getItem(key) || 'dark';
+        return t === 'auto' ? (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark') : t;
+    };
+    window.updateMonacoEditorTheme = function(t) {
+        var m = window.monaco;
+        if (m && m.editor) m.editor.setTheme(t === 'light' ? 'vs' : 'vs-dark');
+    };
+    window.initTheme = function() {
+        var a = window.getActualTheme();
+        document.documentElement.setAttribute('data-theme', a);
+        document.documentElement.style.setProperty('--splash-bg', a === 'light' ? '#ffffff' : '#1e1e1e');
+        window.updateMonacoEditorTheme(a);
+        var logo = document.getElementById('logo');
+        if (logo) logo.src = a === 'light' ? '/static/logo_light.png' : '/static/logo.png';
+    };
+})();
+</script>
+<!-- 启动页面 -->
+<div id="splash-screen" style="position:fixed;top:0;left:0;width:100%;height:100%;z-index:999999;background:var(--splash-bg, #1e1e1e);display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:sans-serif;">
+    <div style="color:#cccccc;font-size:22px;margin-bottom:24px;">PH Code Editor 正在启动</div>
+    <div style="width:280px;height:4px;background:#3e3e42;border-radius:2px;overflow:hidden;">
+        <div id="splash-progress" style="width:0;height:100%;background:#0e639c;border-radius:2px;"></div>
+    </div>
+</div>
+<script>
+(function(){
+    var bar = document.getElementById('splash-progress');
+    var files = [
+        { url: '/static/style.css', type: 'css' },
+        { url: '/static/lib/monaco-editor/loader.js', type: 'js' },
+        { url: '/static/lib/pako.min.js', type: 'js' },
+        { url: '/static/lib/katex.min.css', type: 'css' },
+        { url: '/static/lib/marked.min.js', type: 'js' },
+        { url: '/static/lib/katex.min.js', type: 'js' },
+        { url: '/static/lib/auto-render.min.js', type: 'js' },
+        { url: '/static/dialog_polyfill.js', type: 'js' },
+        { url: '/static/clangd_monaco_lsp.js', type: 'js' },
+        { url: '/static/debug.js', type: 'js' },
+        // { url: '/static/aidebug.js', type: 'js' }, // deprecated
+        { url: '/static/script.js', type: 'js' },
+        { url: '/static/logo.png', type: 'img' },
+        { url: '/static/run.png', type: 'img' },
+        { url: '/static/file.png', type: 'img' },
+        { url: '/static/ext.png', type: 'img' },
+        { url: '/static/cph.png', type: 'img' },
+        { url: '/static/debug.png', type: 'img' }
+    ];
+    var totalBytes = 0, loadedBytes = 0;
+    var MAX_CONCURRENT = 4;
+    function setProgress(pct) { bar.style.width = Math.min(pct, 100) + '%'; }
+
+    function headOne(url) {
+        return new Promise(function(resolve) {
+            var h = new XMLHttpRequest();
+            h.open('HEAD', url, true);
+            h.onload = function() { totalBytes += parseInt(h.getResponseHeader('Content-Length') || 50000); resolve(); };
+            h.onerror = function() { totalBytes += 50000; resolve(); };
+            h.send();
+        });
+    }
+
+    function getOne(f) {
+        return new Promise(function(resolve) {
+            var xhr = new XMLHttpRequest();
+            xhr.open('GET', f.url, true);
+            xhr.responseType = f.type === 'img' ? 'blob' : 'text';
+            xhr._lastLoaded = 0;
+            xhr.onprogress = function(e) {
+                if (e.lengthComputable) {
+                    var d = e.loaded - xhr._lastLoaded;
+                    xhr._lastLoaded = e.loaded;
+                    loadedBytes += d;
+                    setProgress(loadedBytes / totalBytes * 100);
+                }
+            };
+            xhr.onload = function() {
+                if (xhr._lastLoaded < (xhr.response.size || xhr.response.length || 0)) {
+                    var d = (xhr.response.size || xhr.response.length || 0) - xhr._lastLoaded;
+                    loadedBytes += d;
+                    setProgress(loadedBytes / totalBytes * 100);
+                }
+                resolve(xhr.response);
+            };
+            xhr.onerror = function() { resolve(null); };
+            xhr.send();
+        });
+    }
+
+    function throttleMap(list, fn, limit) {
+        var i = 0, results = [];
+        return new Promise(function(resolveAll) {
+            function next() {
+                if (i >= list.length) { resolveAll(results); return; }
+                var batch = [];
+                for (var j = 0; j < limit && i < list.length; j++, i++) {
+                    var idx = i;
+                    batch.push(fn(list[idx]).then(function(r) { results[idx] = r; }));
+                }
+                Promise.all(batch).then(next);
+            }
+            next();
+        });
+    }
+
+    // 先全部 HEAD 确定 totalBytes，再 GET
+    throttleMap(files, function(f) { return headOne(f.url); }, MAX_CONCURRENT).then(function() {
+        return throttleMap(files, function(f) { return getOne(f); }, MAX_CONCURRENT);
+    }).then(function(results) {
+        window._splashData = { files: files, results: results };
+        window._splashReady = true;
+    });
+})();
+</script>
+
+    <!-- VS Code 风格顶部菜单栏 -->
+    <div id="top-menu-bar">
+        <div id="menu-bar-left">
+            <img src="/static/logo.png" alt="Logo" id="logo">
+            <div class="menu-item" id="file-menu">文件</div>
+            <div class="menu-item" id="window-menu">窗口</div>
+            <div class="menu-item" id="terminal-menu">终端</div>
+            <!-- <div id="restart-clangd-btn" class="menu-item" style="display: none; cursor: pointer;">重启clangd</div> -->
+            <div class="menu-item" id="help-menu">帮助</div>
+            <div class="menu-item" id="about-menu">关于</div>
+        </div>
+        <div id="menu-bar-center">
+            <span id="current-file-name" class="current-file">new.cpp</span>
+        </div>
+        <div id="menu-bar-right">
+            <!-- <button id="luogu-btn" class="tool-btn" title="洛谷题目"><img src="/static/Luogu.png" alt="Luogu" class="icon-btn"></button> -->
+            <button id="run-btn" class="tool-btn" title="运行"><img src="/static/run.png" alt="Run" class="icon-btn"></button>
+            <button id="copy-btn" class="tool-btn" title="复制">❐</button>
+            <button id="mode-toggle-btn" class="tool-btn">▲</button>
+        </div>
+    </div>
+
+    <!-- 下拉菜单 -->
+    <div id="file-dropdown" class="dropdown-menu" style="display: none;">
+        <div class="dropdown-item" id="upload-file">上传文件</div>
+        <div class="dropdown-item" id="download-file">下载文件</div>
+        <div class="dropdown-item" id="save-as">另存为</div>
+        <div class="dropdown-divider"></div>
+        <div class="dropdown-item" id="preferences">首选项</div>
+        <div class="dropdown-divider"></div>
+        <div class="dropdown-item" id="new-file">新建文件</div>
+    </div>
+
+    <!-- 窗口下拉菜单 -->
+    <div id="window-dropdown" class="dropdown-menu" style="display: none;">
+        <div class="dropdown-item" id="window-zoom-in">全局放大</div>
+        <div class="dropdown-item" id="window-zoom-out">全局缩小</div>
+        <div class="dropdown-item" id="window-zoom-reset">重置全局缩放</div>
+        <div class="dropdown-divider"></div>
+        <div class="dropdown-item" id="editor-zoom-in" style="display: none;">编辑器放大</div>
+        <div class="dropdown-item" id="editor-zoom-out" style="display: none;">编辑器缩小</div>
+        <div class="dropdown-divider"></div>
+        <div class="dropdown-item" id="window-reload">重载</div>
+        <div class="dropdown-divider"></div>
+        <div class="dropdown-item" id="restart-clangd-btn" style="cursor: pointer;">重启 Clangd</div>
+    </div>
+
+    <!-- 帮助下拉菜单 -->
+    <div id="help-dropdown" class="dropdown-menu" style="display: none;">
+        <div class="dropdown-item" id="help-quick-settings">⚙️ 快速设置</div>
+        <div class="dropdown-item" id="help-tutorial">🎓 新手教程</div>
+        <div class="dropdown-divider"></div>
+        <div class="dropdown-item" id="help-shortcuts">⌨️ 快捷键</div>
+    </div>
+
+    <!-- 左侧边栏 -->
+    <div id="left-sidebar">
+        <div id="sidebar-toggle" class="sidebar-button" title="显示/隐藏虚拟文件系统"><img src="/static/file.png" alt="Files" class="icon-btn"></div>
+        <div id="plugin-center-toggle" class="sidebar-button" title="插件中心"><img src="/static/ext.png" alt="Plugins" class="icon-btn"></div>
+        <div id="cph-plugin-toggle" class="sidebar-button" title="CPH - 试题集管理"><img src="/static/cph.png" alt="CPH" class="icon-btn"></div>
+        <div id="debug-btn" class="sidebar-button" title="调试"><img src="/static/debug.png" alt="Debug" class="icon-btn"></div>
+    </div>
+
+    <!-- 虚拟文件系统面板 -->
+    <div id="vfs-panel" class="vfs-panel" style="display: none;">
+        <div class="vfs-header">
+            <span>资源管理器</span>
+            <button id="vfs-close-btn" class="vfs-close-btn">×</button>
+        </div>
+        <div id="vfs-content" class="vfs-content">
+            <div class="vfs-root">
+                <div class="vfs-folder" data-path="/">根目录</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 插件中心面板 -->
+    <div id="plugin-center-panel" class="vfs-panel" style="display: none;">
+        <div class="vfs-header">
+            <span>插件中心</span>
+            <button id="plugin-center-close-btn" class="vfs-close-btn">×</button>
+        </div>
+        <div id="plugin-center-content" class="vfs-content">
+            <!-- C++代码补全插件 -->
+            <div class="plugin-item">
+                <div class="plugin-header">C++代码补全</div>
+                <div class="plugin-settings">
+                    <div class="setting-item">
+                        <label>
+                            <input type="checkbox" id="cpp-autocomplete-enabled" checked> 启用
+                        </label>
+                    </div>
+                    <div class="setting-item">
+                        <label for="cpp-autocomplete-delay">延迟时间(ms):</label>
+                        <input type="number" id="cpp-autocomplete-delay" value="200" min="0">
+                    </div>
+                </div>
+            </div>
+
+            <!-- 查看洛谷主题库插件 -->
+            <div class="plugin-item">
+                <div class="plugin-header">查看洛谷主题库</div>
+                <div class="plugin-header">题目来源于洛谷开放平台</div>
+                <div class="plugin-settings">
+                    <div class="setting-item">
+                        <label>
+                            <input type="checkbox" id="luogu-theme-enabled"> 启用
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CPH插件 -->
+            <div class="plugin-item">
+                <div class="plugin-header">CPH - 刷题好帮手</div>
+                <div class="plugin-description">记录测试点，一键运行!</div>
+                <div class="plugin-settings">
+                    <div class="setting-item">
+                        <label>
+                            <input type="checkbox" id="cph-plugin-enabled"> 启用
+                        </label>
+                    </div>
+                </div>
+            </div>
+            <div class="plugin-item">
+                <div class="plugin-header">🤖 AI 自动调试（实验性）</div>
+                <!-- 废弃的 AI 调试功能
+                <div class="plugin-description" style="color: #ff6b6b;">⚠️ 请不要在比赛、考试时使用此功能，违者后果自负</div>
+                <div class="plugin-settings">
+                    <div class="setting-item">
+                        <button id="aidebug-open-btn" class="btn-small">打开 AI 调试</button>
+                    </div>
+                </div>
+            </div> -->
+
+        </div>
+    </div>
+
+    <!-- 3行预览区 (结构已修改，包含行号) -->
+    <div id="lines-container" style="display: none;">
+        <!-- 上一行 -->
+        <div class="line-wrapper">
+            <div id="ln-prev" class="line-number"></div>
+            <div id="line-prev" class="line-view"></div>
+        </div>
+        <!-- 当前行 -->
+        <div class="line-wrapper current">
+            <div id="ln-curr" class="line-number"></div>
+            <div id="line-curr" class="line-view current"></div>
+        </div>
+        <!-- 下一行 -->
+        <div class="line-wrapper">
+            <div id="ln-next" class="line-number"></div>
+            <div id="line-next" class="line-view"></div>
+        </div>
+    </div>
+
+    <!-- 输入模态框 -->
+    <div id="input-modal">
+        <div class="modal-content">
+            <div class="modal-header">Standard Input (Stdin)</div>
+            <textarea id="modal-textarea" placeholder="在此输入数据... (Enter运行，Shift/Ctrl+Enter换行)"></textarea>
+            <div class="modal-footer">
+                <button id="modal-cancel" class="modal-btn">取消</button>
+                <button id="modal-run" class="modal-btn">运行</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 首选项弹窗 -->
+    <div id="preferences-modal" class="modal-overlay">
+        <div class="modal-content preferences-modal">
+            <div class="modal-header">
+                <h2>首选项</h2>
+                <span id="close-preferences" class="close-btn">×</span>
+            </div>
+            <div class="modal-body">
+                <div class="setting-item">
+                    <label for="default-code-editor">默认代码:</label>
+                    <textarea id="default-code-editor" placeholder="在此输入默认代码..."></textarea>
+                </div>
+                <div class="setting-item">
+                    <label for="color-mode-select"> 颜色模式（实验性）:</label>
+                    <select id="color-mode-select" style="width: 100%; padding: 8px; background-color: var(--input-bg); color: var(--input-text); border: 1px solid var(--input-border); border-radius: 4px; font-size: 14px;">
+                        <option value="dark">深色模式</option>
+                        <option value="light">浅色模式</option>
+                        <option value="auto">自动（跟随系统）</option>
+                    </select>
+                </div>
+                <div class="setting-item">
+                    <label for="local-compile-enabled">
+                        <input type="checkbox" id="local-compile-enabled"> 浏览器内本地编译（实验性，WASM）
+                    </label>
+                    <span id="local-compile-info" title="了解更多" style="margin-left: 5px; cursor: pointer; color: #00aaff; text-decoration: underline;">ⓘ</span>
+                    <span style="font-size: 12px; color: var(--text-secondary, #888); margin-left: 24px; display: block;">在浏览器中用WebAssembly编译运行C++，无需远程服务器</span>
+                </div>
+                <div class="setting-item" id="local-compile-terminate-setting" style="display: none; margin-left: 20px;">
+                    <label for="local-compile-terminate">
+                        <input type="checkbox" id="local-compile-terminate"> 运行后结束编译器节省内存（下次运行更慢）
+                    </label>
+                </div>
+                <div class="setting-item">
+                    <label for="clangd-enabled">
+                        <input type="checkbox" id="clangd-enabled"> Clangd 语言服务器 (补全/跳转/诊断/格式化)
+                    </label>
+                    <span id="clangd-info" title="了解更多" style="margin-left: 5px; cursor: pointer; color: #00aaff; text-decoration: underline;">ⓘ</span>
+                </div>
+                <div class="setting-item" id="clangd-completion-setting" style="display: none; margin-left: 20px;">
+                    <label for="clangd-completion-enabled">
+                        <input type="checkbox" id="clangd-completion-enabled"> Clangd 代码补全
+                    </label>
+                </div>
+                <div class="setting-item" id="clangd-semantic-setting" style="display: none; margin-left: 20px;">
+                    <label for="clangd-semantic-enabled">
+                        <input type="checkbox" id="clangd-semantic-enabled"> Clangd 语义高亮 (若卡顿请关闭)
+                    </label>
+                </div>
+                <div class="setting-item">
+                    <label for="native-fs-enabled">
+                        <input type="checkbox" id="native-fs-enabled"> 实验性功能：启用本地储存(不稳定)
+                    </label>
+                    <span id="local-storage-info" title="了解更多" style="margin-left: 5px; cursor: pointer; color: #00aaff; text-decoration: underline;">ⓘ</span>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="reset-default-code" class="modal-btn">重置为默认</button>
+                <button id="cancel-preferences" class="modal-btn">取消</button>
+                <button id="save-preferences" class="modal-btn">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 统一终端面板 -->
+    <div id="terminal-panel" style="display: none;">
+        <div id="terminal-resizer" class="output-resizer"></div>
+        <div id="terminal-header">
+            <div id="terminal-header-left">
+                <div class="terminal-tabs">
+                    <button class="terminal-tab active" data-tab="run" title="运行终端">运行</button>
+                    <button class="terminal-tab" data-tab="info" title="信息终端">信息</button>
+                    <button class="terminal-tab" data-tab="debug" title="调试终端">调试</button>
+                </div>
+                <span id="terminal-pairing-code" style="margin-left: 10px; color: #4daafc; font-size: 12px; display: none;"></span>
+                <button id="terminal-stop-debug-btn" style="margin-left: 10px; padding: 4px 10px; background-color: #c53030; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 12px; display: none;" title="终止调试">终止调试</button>
+            </div>
+            <div id="terminal-header-right">
+                <button id="terminal-minimize-btn" class="debug-header-btn" title="折叠">−</button>
+                <button id="terminal-close-btn" class="debug-header-btn" title="关闭">✕</button>
+            </div>
+        </div>
+        <div id="terminal-container">
+            <!-- 运行终端 -->
+            <div id="terminal-run" class="terminal-content">
+                <div id="terminal-run-content" class="terminal-content-body"></div>
+            </div>
+            <!-- 信息终端 -->
+            <div id="terminal-info" class="terminal-content" style="display: none;">
+                <div id="terminal-info-content" class="terminal-content-body"></div>
+            </div>
+            <!-- 调试终端 -->
+            <div id="terminal-debug" class="terminal-content" style="display: none;">
+                <div id="debug-terminal-wrapper" style="display: flex; height: 100%; width: 100%;">
+                    <!-- 左侧：GDB 终端输出 -->
+                    <div id="debug-terminal-left" style="flex: 1; display: flex; flex-direction: column; min-width: 0; border-right: 1px solid #333;">
+                        <div id="terminal-debug-content" class="terminal-content-body" style="flex: 1; overflow-y: auto; padding-bottom: 50px;"></div>
+                        <div id="debug-input-line" style="display: none; align-items: center; border-top: 1px solid #333; padding: 0 10px; height: 40px; flex-shrink: 0; background: #1e1e1e;">
+                            <span style="color: #4daafc; margin-right: 8px;">(gdb)</span>
+                            <input type="text" id="debug-command-input" placeholder="输入 GDB 命令..." style="flex: 1; background: transparent; border: none; color: #d4d4d4; outline: none; font-family: Consolas, monospace; font-size: 13px;">
+                        </div>
+                    </div>
+                    <!-- 右侧：调试 UI 控制区 -->
+                    <div id="debug-control-panel" style="width: 280px; display: flex; flex-direction: column; background: #1e1e1e; overflow: hidden; flex-shrink: 0;">
+                        <!-- 控制按钮区 -->
+                        <div id="debug-controls" style="padding: 10px; border-bottom: 1px solid #333;">
+                            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 5px; margin-bottom: 10px;">
+                                <button id="debug-run-btn" class="debug-control-btn" title="执行程序 (F5)">
+                                    <span style="font-size: 16px;">▶</span>
+                                    <div style="font-size: 11px; margin-top: 2px;">运行</div>
+                                </button>
+                                <button id="debug-continue-btn" class="debug-control-btn" title="继续执行 (F5)">
+                                    <span style="font-size: 16px;">⏯</span>
+                                    <div style="font-size: 11px; margin-top: 2px;">继续</div>
+                                </button>
+                                <button id="debug-next-btn" class="debug-control-btn" title="下一行 (F10)">
+                                    <span style="font-size: 16px;">⏭</span>
+                                    <div style="font-size: 11px; margin-top: 2px;">下一行</div>
+                                </button>
+                            </div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 5px;">
+                                <button id="debug-step-btn" class="debug-control-btn" title="单步进入 (F11)">
+                                    <span style="font-size: 14px;">⬇</span>
+                                    <div style="font-size: 11px; margin-top: 2px;">进入</div>
+                                </button>
+                                <button id="debug-finish-btn" class="debug-control-btn" title="执行到函数返回 (Shift+F11)">
+                                    <span style="font-size: 14px;">⬆</span>
+                                    <div style="font-size: 11px; margin-top: 2px;">跳出</div>
+                                </button>
+                            </div>
+                        </div>
+                        <!-- 变量查看区 -->
+                        <div id="debug-variables-panel" style="flex: 1; display: flex; flex-direction: column; overflow: hidden;">
+                            <div style="padding: 8px 10px; border-bottom: 1px solid #333; display: flex; justify-content: space-between; align-items: center;">
+                                <span style="color: #eee; font-size: 12px; font-weight: bold;">变量</span>
+                                <div style="display: flex; gap: 5px;">
+                                    <button id="debug-refresh-var-btn" class="debug-small-btn" title="刷新变量值">🔄</button>
+                                    <button id="debug-add-var-btn" class="debug-small-btn" title="添加变量">+</button>
+                                    <button id="debug-remove-var-btn" class="debug-small-btn" title="移除变量">−</button>
+                                </div>
+                            </div>
+                            <div id="debug-variables-list" style="flex: 1; overflow-y: auto; padding: 5px;">
+                                <div style="color: #666; font-size: 11px; padding: 5px;">暂无变量</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 调试状态提示框 -->
+    <div id="debug-status-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">调试功能</div>
+            <div id="debug-status-message" style="color: #ccc; padding: 15px 0; font-size: 14px;"></div>
+            <div id="debug-status-actions" style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 15px;">
+                <button id="debug-status-cancel" class="modal-btn" style="background-color: #3e3e42;">取消</button>
+                <button id="debug-status-confirm" class="modal-btn" style="background-color: #0e639c; display: none;">开始调试</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 新手教程模态框 -->
+    <div id="tutorial-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-content tutorial-modal" style="max-width: 600px;">
+            <div class="modal-header">
+                <h2>🎓 新手教程</h2>
+                <span id="close-tutorial" class="close-btn">×</span>
+            </div>
+            <div class="modal-body" style="max-height: 400px; overflow-y: auto;">
+                <div id="tutorial-content">
+                    <!-- 教程内容将通过JavaScript动态加载 -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="tutorial-prev" class="modal-btn" style="background-color: #3e3e42;">上一步</button>
+                <button id="tutorial-next" class="modal-btn" style="background-color: #0e639c;">下一步</button>
+                <button id="tutorial-skip" class="modal-btn" style="background-color: #c53030;">跳过</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 首选项设置询问模态框 -->
+    <div id="preferences-setup-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-content tutorial-modal" style="max-width: 500px;">
+            <div class="modal-header">
+                <h2>⚙️ 欢迎使用 PH Code！</h2>
+                <span id="close-prefs-setup" class="close-btn">×</span>
+            </div>
+            <div class="modal-body" style="padding: 20px;">
+                <div id="prefs-setup-content">
+                    <!-- 设置内容将通过JavaScript动态加载 -->
+                </div>
+            </div>
+            <div class="modal-footer" id="prefs-setup-footer">
+                <!-- 底部按钮将通过JavaScript动态加载 -->
+            </div>
+        </div>
+    </div>
+
+    <!-- 中心编辑器区域 -->
+    <div id="editor-area" style="flex: 1; display: flex; overflow: hidden;">
+        <!-- 编辑器容器 -->
+        <div id="editor-container" style="flex: 1; height: 100%; position: relative;">
+            <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:#666;font-size:14px;text-align:center;pointer-events:none;">
+                如果编辑器没有加载，请等待一会，若仍无反应，请刷新
+            </div>
+        </div>
+    </div>
+
+    <!-- 移动端代码补全容器 -->
+    <div id="mobile-autocomplete-container"></div>
+
+    <!-- 虚拟键盘容器 -->
+    <div id="keyboard-container">
+        <!-- Row 1 -->
+        <div class="row">
+            <div class="key w-1" data-key="`" data-shift="~"><div class="key-content"><span class="sup">~</span><span class="main">`</span></div></div>
+            <div class="key w-1" data-key="1" data-shift="!"><div class="key-content"><span class="sup">!</span><span class="main">1</span></div></div>
+            <div class="key w-1" data-key="2" data-shift="@"><div class="key-content"><span class="sup">@</span><span class="main">2</span></div></div>
+            <div class="key w-1" data-key="3" data-shift="#"><div class="key-content"><span class="sup">#</span><span class="main">3</span></div></div>
+            <div class="key w-1" data-key="4" data-shift="$"><div class="key-content"><span class="sup">$</span><span class="main">4</span></div></div>
+            <div class="key w-1" data-key="5" data-shift="%"><div class="key-content"><span class="sup">%</span><span class="main">5</span></div></div>
+            <div class="key w-1" data-key="6" data-shift="^"><div class="key-content"><span class="sup">^</span><span class="main">6</span></div></div>
+            <div class="key w-1" data-key="7" data-shift="&"><div class="key-content"><span class="sup">&</span><span class="main">7</span></div></div>
+            <div class="key w-1" data-key="8" data-shift="*"><div class="key-content"><span class="sup">*</span><span class="main">8</span></div></div>
+            <div class="key w-1" data-key="9" data-shift="("><div class="key-content"><span class="sup">(</span><span class="main">9</span></div></div>
+            <div class="key w-1" data-key="0" data-shift=")"><div class="key-content"><span class="sup">)</span><span class="main">0</span></div></div>
+            <div class="key w-1" data-key="-" data-shift="_"><div class="key-content"><span class="sup">_</span><span class="main">-</span></div></div>
+            <div class="key w-1" data-key="=" data-shift="+"><div class="key-content"><span class="sup">+</span><span class="main">=</span></div></div>
+            <div class="key w-2 mod repeat-key" data-key="Backspace">Bksp</div>
+            <div class="spacer-sm"></div><div class="spacer"></div>
+            <div class="key nav-key" data-key="Home">Hom</div><div class="key nav-key" data-key="PageUp">PgU</div>
+        </div>
+        <!-- Row 2 -->
+        <div class="row">
+            <div class="key w-1-5 mod" data-key="Tab">Tab</div>
+            <div class="key w-1 alpha-key" data-key="q">Q</div><div class="key w-1 alpha-key" data-key="w">W</div><div class="key w-1 alpha-key" data-key="e">E</div>
+            <div class="key w-1 alpha-key" data-key="r">R</div><div class="key w-1 alpha-key" data-key="t">T</div><div class="key w-1 alpha-key" data-key="y">Y</div>
+            <div class="key w-1 alpha-key" data-key="u">U</div><div class="key w-1 alpha-key" data-key="i">I</div><div class="key w-1 alpha-key" data-key="o">O</div>
+            <div class="key w-1 alpha-key" data-key="p">P</div>
+            <div class="key w-1" data-key="[" data-shift="{"><div class="key-content"><span class="sup">{</span><span class="main">[</span></div></div>
+            <div class="key w-1" data-key="]" data-shift="}"><div class="key-content"><span class="sup">}</span><span class="main">]</span></div></div>
+            <div class="key w-1-5" data-key="\" data-shift="|"><div class="key-content"><span class="sup">|</span><span class="main">\</span></div></div>
+            <div class="spacer-sm"></div>
+            <div class="key nav-key" data-key="Delete">Del</div><div class="key nav-key" data-key="End">End</div><div class="key nav-key" data-key="PageDown">PgD</div>
+        </div>
+        <!-- Row 3 -->
+        <div class="row">
+            <div class="key w-1-75 mod" data-key="CapsLock">Caps</div>
+            <div class="key w-1 alpha-key" data-key="a">A</div><div class="key w-1 alpha-key" data-key="s">S</div><div class="key w-1 alpha-key" data-key="d">D</div>
+            <div class="key w-1 alpha-key" data-key="f">F</div><div class="key w-1 alpha-key" data-key="g">G</div><div class="key w-1 alpha-key" data-key="h">H</div>
+            <div class="key w-1 alpha-key" data-key="j">J</div><div class="key w-1 alpha-key" data-key="k">K</div><div class="key w-1 alpha-key" data-key="l">L</div>
+            <div class="key w-1" data-key=";" data-shift=":"><div class="key-content"><span class="sup">:</span><span class="main">;</span></div></div>
+            <div class="key w-1" data-key="'" data-shift='"'><div class="key-content"><span class="sup">"</span><span class="main">'</span></div></div>
+            <div class="key w-2-25 mod highlight" data-key="Enter">Enter</div>
+            <div class="spacer-sm"></div>
+            <div class="spacer"></div><div class="spacer"></div><div class="spacer"></div>
+        </div>
+        <!-- Row 4 -->
+        <div class="row">
+            <div class="key w-2-25 mod shift-key" data-key="Shift">Shift</div>
+            <div class="key w-1 alpha-key" data-key="z">Z</div><div class="key w-1 alpha-key" data-key="x">X</div><div class="key w-1 alpha-key" data-key="c">C</div>
+            <div class="key w-1 alpha-key" data-key="v">V</div><div class="key w-1 alpha-key" data-key="b">B</div><div class="key w-1 alpha-key" data-key="n">N</div>
+            <div class="key w-1 alpha-key" data-key="m">M</div>
+            <div class="key w-1" data-key="," data-shift="<"><div class="key-content"><span class="sup">&lt;</span><span class="main">,</span></div></div>
+            <div class="key w-1" data-key="." data-shift=">"><div class="key-content"><span class="sup">&gt;</span><span class="main">.</span></div></div>
+            <div class="key w-1" data-key="/" data-shift="?"><div class="key-content"><span class="sup">?</span><span class="main">/</span></div></div>
+            <div class="key w-2 mod shift-key" data-key="Shift">Shift</div>
+            <div class="spacer-sm"></div><div class="spacer"></div>
+            <div class="key nav-key repeat-key" data-key="ArrowUp">↑</div><div class="spacer"></div>
+        </div>
+        <!-- Row 5 -->
+        <div class="row">
+            <div class="key w-1-5 mod ctrl-key" data-key="Control">Ctrl</div>
+            <div class="spacer"></div><div class="spacer-1-5"></div>
+            <div class="key w-space" data-key=" ">Space</div>
+            <div class="spacer"></div><div class="spacer"></div>
+            <div class="key w-1 mod" data-key="ContextMenu">≡</div>
+            <div class="key w-1-5 mod ctrl-key" data-key="Control">Ctrl</div>
+            <div class="spacer-sm"></div>
+            <div class="key nav-key repeat-key" data-key="ArrowLeft">←</div>
+            <div class="key nav-key repeat-key" data-key="ArrowDown">↓</div>
+            <div class="key nav-key repeat-key" data-key="ArrowRight">→</div>
+        </div>
+    </div>
+
+    <!-- 关于弹窗 -->
+    <div id="about-modal" class="modal-overlay">
+        <div class="modal-content about-modal">
+            <div class="modal-header">
+                <h2>关于 PH code</h2>
+                <span id="close-about" class="close-btn">×</span>
+            </div>
+            <div class="modal-body">
+                <p><a href="https://github.com/huchangzhi/phcode" target="_blank">PH Code v3</a> - 适合 OI 的在线 C++ 编辑器</p>
+                <a href="https://www.123684.com/s/AIfyVv-oqXs3" target="_blank">客户端下载/更新地址</a>
+                <p>web版本 / 桌面版 / 安卓版</p>
+                <p>一个跨平台的 C++ 编辑器，专为信息学竞赛（OI）设计，支持在桌面、Web 和移动设备上编写和运行 C++ 代码。</p>
+            </div>
+        </div>
+    </div>
+
+<script>
+(function(){
+    function hideSplash() {
+        var s = document.getElementById('splash-screen');
+        if (!s) return;
+        s.style.opacity = '0';
+        s.style.transition = 'opacity 0.4s ease';
+        setTimeout(function() { s.style.display = 'none'; }, 400);
+    }
+    if (window._splashReady) { hideSplash(); return; }
+    Object.defineProperty(window, '_splashReady', { set: function(v) { if (v) hideSplash(); } });
+})();
+</script>
+
+    <!-- 引入 KaTeX CSS -->
+    <link rel="stylesheet" href="/static/lib/katex.min.css">
+
+    <!-- 引入 Marked.js 和 KaTeX JS -->
+    <script src="/static/lib/marked.min.js"></script>
+    <script src="/static/lib/katex.min.js"></script>
+    <script src="/static/lib/auto-render.min.js"></script>
+
+    <!-- Monaco Editor -->
+    <script src="/static/lib/monaco-editor/loader.js"></script>
+
+    <!-- pako.js for gzip decompression -->
+    <script src="/static/lib/pako.min.js"></script>
+
+    <!-- Core Scripts (non-module, loaded synchronously) -->
+    <script src="/static/dialog_polyfill.js"></script>
+    <!-- vfs.js removed - replaced by packages/frontend/src/vfs.ts via Vite -->
+    <script src="/static/clangd_monaco_lsp.js"></script>
+    <script src="/static/debug.js"></script>
+    <!-- <script src="/static/aidebug.js"></script> -->
+    <script src="/static/script.js"></script>
+    <!-- Remaining script.js modules (all migrated to src/*.ts via Vite bundle):
+         dialog, code_features, light_model, habit_tracker, autocomplete,
+         luogu, local_compile, cph, mobile_autocomplete, theme -->
+    <script type="module" src="/src/main.ts"></script>
+</body>
+</html>

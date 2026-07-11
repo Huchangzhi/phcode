@@ -1,0 +1,24 @@
+{
+  "name": "@phoi/server",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc -b",
+    "start": "node dist/index.js",
+    "clean": "tsx -e \"import('fs').then(({rmSync})=>rmSync('dist',{recursive:true,force:true}))\""
+  },
+  "dependencies": {
+    "@phoi/shared": "*",
+    "express": "^4.19.0",
+    "cors": "^2.8.5"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/cors": "^2.8.17",
+    "@types/node": "^20.14.0",
+    "tsx": "^4.15.0",
+    "typescript": "^5.5.0"
+  }
+}

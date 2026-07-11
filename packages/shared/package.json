@@ -1,0 +1,33 @@
+{
+  "name": "@phoi/shared",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -b"
+  },
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./security": {
+      "import": "./dist/security.js",
+      "types": "./dist/security.d.ts"
+    },
+    "./rextester": {
+      "import": "./dist/rextester.js",
+      "types": "./dist/rextester.d.ts"
+    },
+    "./types": {
+      "import": "./dist/types.js",
+      "types": "./dist/types.d.ts"
+    },
+    "./constants": {
+      "import": "./dist/constants.js",
+      "types": "./dist/constants.d.ts"
+    }
+  }
+}

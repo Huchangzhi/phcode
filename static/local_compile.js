@@ -79,9 +79,9 @@ window.LocalCompile = (function () {
 
             updateProgress('lc_init', 80, 100, '启动编译器...');
 
-            const clangBlob = new Blob([cachedClang], { type: 'application/wasm' });
+            const clangBlob = new Blob([cachedClang.slice(0)], { type: 'application/wasm' });
             const clangWasmUrl = URL.createObjectURL(clangBlob);
-            const lldBlob = new Blob([cachedLld], { type: 'application/wasm' });
+            const lldBlob = new Blob([cachedLld.slice(0)], { type: 'application/wasm' });
             const lldWasmUrl = URL.createObjectURL(lldBlob);
 
             worker = new Worker('/static/local-compile/compile-worker.js', { type: 'module' });
@@ -93,7 +93,7 @@ window.LocalCompile = (function () {
                     updateProgress('lc_ready', 100, 100, '点击 × 关闭');
                     initShown = true;
                     readyCallbacks.forEach(cb => cb());
-                    readyCallbacks = [];
+                    readyCallbacks.length = 0;
                     return;
                 }
                 if (msg.type === 'compiled') {
@@ -131,7 +131,7 @@ window.LocalCompile = (function () {
                     const resolve = pendingRequests.get(msg.id);
                     if (resolve) {
                         pendingRequests.delete(msg.id);
-                        resolve(msg);
+                        resolve({ Warnings: msg.Warnings || '', Errors: msg.Errors || '', Result: msg.Result || '', Stats: msg.Stats || '' });
                     }
                 }
             };

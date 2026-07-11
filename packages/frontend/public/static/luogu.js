@@ -1,0 +1,2585 @@
+﻿// 洛谷插件相关代码
+
+// 洛谷主题颜色管理
+function getLuoguThemeColors() {
+    const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+    if (isLight) {
+        return {
+            // 背景色
+            bg: '#ffffff',
+            bgAlt: '#f5f5f5',
+            bgHover: '#e8e8e8',
+            bgCode: '#f0f0f0',
+            // 文字色
+            text: '#333333',
+            textSecondary: '#666666',
+            textMuted: '#888888',
+            // 边框色
+            border: '#e0e0e0',
+            borderLight: '#d0d0d0',
+            // 按钮色
+            btnPrimary: '#0078d4',
+            btnSecondary: '#e0e0e0',
+            btnTranslate: '#2d8c4e',
+            btnTranslateHover: '#257a40',
+            btnDisabled: '#1e5a3a',
+            btnError: '#8b5a2b',
+            btnCph: '#5a3fc0',
+            // 标签色
+            headingColor: '#0000ff',
+            // 难度标签颜色
+            difficultyGray: '#999',
+            difficultyRed: '#ff4444',
+            difficultyOrange: '#ff8800',
+            difficultyYellow: '#ffbb00',
+            difficultyGreen: '#00aa00',
+            difficultyBlue: '#0066cc',
+            difficultyPurple: '#8800cc',
+            difficultyDarkPurple: '#220066',
+            // 加载和提示色
+            loadingText: '#666',
+            errorText: '#d13438',
+            successText: '#2d8c4e',
+            warnText: '#9d6b00',
+        };
+    } else {
+        return {
+            // 背景色
+            bg: '#1e1e1e',
+            bgAlt: '#1a1a1a',
+            bgHover: '#2a2a2a',
+            bgCode: '#1e1e1e',
+            // 文字色
+            text: '#d4d4d4',
+            textSecondary: '#aaaaaa',
+            textMuted: '#888888',
+            // 边框色
+            border: '#333',
+            borderLight: '#3c3c3c',
+            // 按钮色
+            btnPrimary: '#0e639c',
+            btnSecondary: '#3e3e42',
+            btnTranslate: '#2d8c4e',
+            btnTranslateHover: '#1e5a3a',
+            btnDisabled: '#1e5a3a',
+            btnError: '#8b5a2b',
+            btnCph: '#5a3fc0',
+            // 标签色
+            headingColor: '#569cd6',
+            // 难度标签颜色
+            difficultyGray: '#666',
+            difficultyRed: '#ff4444',
+            difficultyOrange: '#ff8800',
+            difficultyYellow: '#ffbb00',
+            difficultyGreen: '#00aa00',
+            difficultyBlue: '#0066cc',
+            difficultyPurple: '#8800cc',
+            difficultyDarkPurple: '#220066',
+            // 加载和提示色
+            loadingText: '#ccc',
+            errorText: '#f48771',
+            successText: '#2d8c4e',
+            warnText: '#cca700',
+        };
+    }
+}
+
+// 初始化洛谷插件设置变量
+window.luoguThemeEnabled = localStorage.getItem('phoi_luogu_theme_enabled') !== 'false'; // 默认启用
+
+// 初始化洛谷题目功能
+function initLuoguFeature() {
+    // 从localStorage获取洛谷插件状态，如果不存在则默认启用
+    window.luoguThemeEnabled = localStorage.getItem('phoi_luogu_theme_enabled') !== 'false';
+    
+    // 根据插件设置决定是否显示洛谷按钮
+    updateLuoguButtonVisibility();
+
+    // 监听插件设置变化
+    const luoguThemeEnabledCheckbox = document.getElementById('luogu-theme-enabled');
+    if (luoguThemeEnabledCheckbox) {
+        // 初始化时设置开关状态
+        luoguThemeEnabledCheckbox.checked = window.luoguThemeEnabled;
+        
+        luoguThemeEnabledCheckbox.addEventListener('change', function() {
+            // 更新全局变量
+            window.luoguThemeEnabled = this.checked;
+            localStorage.setItem('phoi_luogu_theme_enabled', this.checked);
+            updateLuoguButtonVisibility();
+
+            // 洛谷主题启用状态已更新，存储到本地
+            // 实际的主题功能将在后续实现
+            console.log('洛谷主题插件状态已更新:', this.checked);
+        });
+    }
+}
+
+// 更新洛谷按钮可见性
+function updateLuoguButtonVisibility() {
+    // 创建或获取洛谷按钮容器
+    let luoguContainer = document.getElementById('luogu-container');
+    if (!luoguContainer) {
+        // 创建容器
+        luoguContainer = document.createElement('div');
+        luoguContainer.id = 'luogu-container';
+        luoguContainer.style.display = 'flex';
+        luoguContainer.style.alignItems = 'center';
+
+        // 插入到menu-bar-right中，放在run-btn前面
+        const menuBarRight = document.getElementById('menu-bar-right');
+        const runBtn = document.getElementById('run-btn');
+        if (menuBarRight && runBtn) {
+            menuBarRight.insertBefore(luoguContainer, runBtn);
+        }
+    }
+
+    // 清空容器
+    luoguContainer.innerHTML = '';
+
+    // 如果启用了洛谷插件，则显示按钮
+    if (window.luoguThemeEnabled) {
+        // 创建洛谷按钮
+        const luoguBtn = document.createElement('button');
+        luoguBtn.id = 'luogu-btn';
+        luoguBtn.className = 'tool-btn';
+        luoguBtn.title = '洛谷题目';
+
+        // 创建洛谷图标
+        const luoguImg = document.createElement('img');
+        luoguImg.src = '/static/Luogu.png';
+        luoguImg.alt = 'Luogu';
+        luoguImg.className = 'icon-btn';
+
+        // 组装按钮
+        luoguBtn.appendChild(luoguImg);
+        luoguContainer.appendChild(luoguBtn);
+
+        // 添加点击事件
+        luoguBtn.addEventListener('click', showLuoguProblemDialog);
+    }
+}
+
+// 显示洛谷题目对话框
+function showLuoguProblemDialog() {
+    const colors = getLuoguThemeColors();
+    // 创建模态框
+    const modal = document.createElement('div');
+    modal.id = 'luogu-modal';
+    modal.className = 'modal-overlay';
+    modal.style.display = 'flex';
+    modal.style.zIndex = '200'; // 确保在其他元素之上
+
+    // 创建模态框内容
+    const modalContent = document.createElement('div');
+    modalContent.className = 'modal-content';
+
+    // 检测是否为移动设备 - 使用 isFullMode 变量作为参考
+    const isMobile = !isFullMode; // 非全屏模式视为移动设备
+
+    if (isMobile) {
+        // 移动端样式
+        modalContent.style.width = '90%';
+        modalContent.style.maxWidth = 'none';
+        modalContent.style.margin = '20px';
+        modalContent.style.maxHeight = '80vh';
+    } else {
+        // 桌面端样式
+        modalContent.style.width = '80%';
+        modalContent.style.maxWidth = '500px';
+        modalContent.style.margin = 'auto';
+    }
+
+    // 创建头部
+    const modalHeader = document.createElement('div');
+    modalHeader.className = 'modal-header';
+
+    const headerTitle = document.createElement('h2');
+    headerTitle.textContent = '洛谷题目查询';
+
+    const closeBtn = document.createElement('span');
+    closeBtn.className = 'close-btn';
+    closeBtn.textContent = '×';
+    closeBtn.addEventListener('click', function() {
+        document.body.removeChild(modal);
+    });
+
+    modalHeader.appendChild(headerTitle);
+    modalHeader.appendChild(closeBtn);
+
+    // 创建主体
+    const modalBody = document.createElement('div');
+    modalBody.className = 'modal-body';
+    modalBody.style.padding = '20px';
+
+    // 在移动端增加最大高度和滚动
+    if (isMobile) {
+        modalBody.style.maxHeight = '60vh';
+        modalBody.style.overflowY = 'auto';
+    }
+    // GeckoView 兼容：自定义触摸滚动
+    if (typeof _enableCustomTouchScroll === 'function') {
+        _enableCustomTouchScroll(modalBody);
+        _enableCustomTouchScroll(modalContent);
+    }
+
+    // 创建输入提示
+    const inputLabel = document.createElement('label');
+    inputLabel.textContent = '请输入题号（例如：P1001 或 p1001）：';
+    inputLabel.style.display = 'block';
+    inputLabel.style.marginBottom = '10px';
+    inputLabel.style.color = colors.textSecondary;
+
+    // 创建输入框
+    const inputField = document.createElement('input');
+    inputField.type = 'text';
+    inputField.placeholder = '例如：P1001';
+    inputField.style.width = '100%';
+    inputField.style.padding = '12px';
+    inputField.style.marginBottom = '15px';
+    inputField.style.backgroundColor = colors.bg;
+    inputField.style.color = colors.text;
+    inputField.style.border = '1px solid ' + colors.borderLight;
+    inputField.style.borderRadius = '4px';
+    inputField.style.fontSize = '16px'; // 移动端更大的字体
+
+    // 在移动端增加触摸目标大小
+    if (isMobile) {
+        inputField.style.minHeight = '44px'; // 符合移动端触摸目标大小
+    }
+
+    // 从localStorage中恢复上次输入的题号
+    const savedProblemId = localStorage.getItem('phoi_last_luogu_problem_id');
+    if (savedProblemId) {
+        inputField.value = savedProblemId;
+    }
+
+    // 创建"从剪切板读取Markdown格式题目"按钮
+    const readMarkdownBtn = document.createElement('button');
+    readMarkdownBtn.textContent = '从剪切板读取Markdown格式题目';
+    readMarkdownBtn.className = 'modal-btn';
+    readMarkdownBtn.style.backgroundColor = colors.btnSecondary;
+    readMarkdownBtn.style.marginRight = '10px';
+    readMarkdownBtn.style.padding = '12px 24px';
+    
+    // 在移动端增加触摸目标大小
+    if (isMobile) {
+        readMarkdownBtn.style.minHeight = '44px';
+        readMarkdownBtn.style.fontSize = '16px';
+    }
+
+    // 创建"打开上次读取的题目"按钮
+    const openLastProblemBtn = document.createElement('button');
+    openLastProblemBtn.textContent = '打开上次读取的题目';
+    openLastProblemBtn.className = 'modal-btn';
+    openLastProblemBtn.style.backgroundColor = colors.btnSecondary;
+    openLastProblemBtn.style.marginRight = '10px';
+    openLastProblemBtn.style.padding = '12px 24px';
+    
+    // 在移动端增加触摸目标大小
+    if (isMobile) {
+        openLastProblemBtn.style.minHeight = '44px';
+        openLastProblemBtn.style.fontSize = '16px';
+    }
+
+    // 创建确认按钮
+    const confirmBtn = document.createElement('button');
+    confirmBtn.textContent = '查询';
+    confirmBtn.className = 'modal-btn';
+    confirmBtn.style.backgroundColor = colors.btnPrimary;
+    confirmBtn.style.float = 'right';
+    confirmBtn.style.padding = '12px 24px';
+
+    // 在移动端增加触摸目标大小
+    if (isMobile) {
+        confirmBtn.style.minHeight = '44px';
+        confirmBtn.style.fontSize = '16px';
+    }
+
+    // 添加"从剪切板读取Markdown格式题目"按钮点击事件
+    readMarkdownBtn.addEventListener('click', async function() {
+        try {
+            // 尝试从剪贴板读取文本
+            const text = await navigator.clipboard.readText();
+            
+            // 验证是否为有效的Markdown格式题目
+            if (isValidMarkdownProblem(text)) {
+                // 保存到localStorage
+                localStorage.setItem('phoi_last_markdown_problem', text);
+                
+                // 显示成功消息
+                showMessage('Markdown题目已读取并保存', 'system');
+                
+                // 解析并显示Markdown题目
+                parseAndDisplayMarkdownProblem(text);
+                
+                // 关闭当前模态框
+                document.body.removeChild(modal);
+            } else {
+                showMessage('剪贴板内容不是有效的Markdown格式题目', 'system');
+            }
+        } catch (err) {
+            console.error('无法读取剪贴板:', err);
+            showMessage('无法读取剪贴板，请确保使用HTTPS或本地环境', 'system');
+        }
+    });
+
+    // 添加"打开上次读取的题目"按钮点击事件
+    openLastProblemBtn.addEventListener('click', function() {
+        const lastProblem = localStorage.getItem('phoi_last_markdown_problem');
+        if (lastProblem) {
+            // 解析并显示上次保存的Markdown题目
+            parseAndDisplayMarkdownProblem(lastProblem);
+            
+            // 关闭当前模态框
+            document.body.removeChild(modal);
+            
+            showMessage('已打开上次读取的题目', 'system');
+        } else {
+            showMessage('没有找到上次读取的题目', 'system');
+        }
+    });
+
+    // 添加回车键支持
+    inputField.addEventListener('keyup', function(e) {
+        if (e.key === 'Enter') {
+            confirmBtn.click();
+        }
+    });
+
+    // 添加确认按钮点击事件
+    confirmBtn.addEventListener('click', function() {
+        const problemId = inputField.value.trim();
+        if (problemId) {
+            // 处理题号，统一转换为大写
+            const normalizedId = problemId.toUpperCase();
+            // 保存题号到localStorage
+            localStorage.setItem('phoi_last_luogu_problem_id', problemId);
+            loadLuoguProblem(normalizedId);
+            document.body.removeChild(modal);
+        }
+    });
+
+    // 组装模态框 - 将按钮按要求的顺序添加
+    modalBody.appendChild(inputLabel);
+    modalBody.appendChild(inputField);
+    modalBody.appendChild(readMarkdownBtn);  // 在确认按钮之前添加
+    modalBody.appendChild(openLastProblemBtn);  // 在确认按钮之前添加
+    modalBody.appendChild(confirmBtn);
+
+    modalContent.appendChild(modalHeader);
+    modalContent.appendChild(modalBody);
+    modal.appendChild(modalContent);
+    document.body.appendChild(modal);
+
+    // 聚焦到输入框
+    inputField.focus();
+
+    // 在移动端，确保输入框不会被虚拟键盘遮挡
+    if (isMobile) {
+        setTimeout(() => {
+            inputField.scrollIntoView({behavior: 'smooth', block: 'center'});
+        }, 300);
+    }
+}
+
+// 加载洛谷题目
+function loadLuoguProblem(problemId) {
+    const colors = getLuoguThemeColors();
+    // 这里应该从数据文件中查找题目，但现在我们先显示一个加载提示
+    console.log('正在加载题目:', problemId);
+
+    // 创建题目显示区域
+    createProblemDisplayArea();
+
+    // 模拟加载过程
+    const problemDisplay = document.getElementById('problem-display');
+    if (problemDisplay) {
+        // 检测是否为移动设备 - 使用键盘显示状态作为参考
+        const keyboardContainer = document.getElementById('keyboard-container');
+        const isMobile = !isFullMode; // 非全屏模式视为移动设备
+
+        problemDisplay.style.display = 'block';
+
+        // 保存关闭按钮（如果存在）
+        const existingCloseBtn = problemDisplay.querySelector('.problem-display-close');
+        
+        // 清空内容区域
+        const oldScrollContainer = problemDisplay.querySelector('[data-scroll-container]');
+        if (oldScrollContainer) {
+            oldScrollContainer.remove();
+        }
+
+        // 创建加载提示容器
+        const loadingContainer = document.createElement('div');
+        loadingContainer.setAttribute('data-scroll-container', 'true');
+        loadingContainer.style.height = '100%';
+        loadingContainer.style.overflowY = 'auto';
+        loadingContainer.style.padding = '20px';
+        loadingContainer.style.boxSizing = 'border-box';
+        loadingContainer.style.textAlign = isMobile ? 'center' : 'left';
+        loadingContainer.style.color = colors.textSecondary;
+        loadingContainer.textContent = '正在加载题目...';
+
+        problemDisplay.appendChild(loadingContainer);
+
+        // 重新添加关闭按钮
+        if (existingCloseBtn) {
+            problemDisplay.appendChild(existingCloseBtn);
+        }
+
+        // 在桌面端显示 resizer
+        if (!isMobile) {
+            const resizer = document.getElementById('problem-display-resizer');
+            if (resizer) {
+                resizer.style.display = 'block';
+                // 更新 resizer 位置以匹配当前面板宽度
+                resizer.style.left = 'calc(100% - ' + problemDisplay.offsetWidth + 'px)';
+            }
+        }
+
+        // 异步加载题目数据
+        fetchLuoguProblemData(problemId).then(problemData => {
+            if (problemData) {
+                displayLuoguProblem(problemData);
+            } else {
+                // 显示错误信息
+                const errorContainer = document.createElement('div');
+                errorContainer.setAttribute('data-scroll-container', 'true');
+                errorContainer.style.height = '100%';
+                errorContainer.style.overflowY = 'auto';
+                errorContainer.style.padding = '20px';
+                errorContainer.style.boxSizing = 'border-box';
+                errorContainer.style.textAlign = isMobile ? 'center' : 'left';
+                errorContainer.style.color = colors.errorText;
+                errorContainer.textContent = '未找到题目：' + problemId;
+
+                // 替换加载提示
+                const oldContainer = problemDisplay.querySelector('[data-scroll-container]');
+                if (oldContainer) {
+                    oldContainer.remove();
+                }
+                problemDisplay.appendChild(errorContainer);
+
+                // 重新添加关闭按钮
+                const closeBtn = problemDisplay.querySelector('.problem-display-close');
+                if (closeBtn) {
+                    problemDisplay.appendChild(closeBtn);
+                }
+            }
+        }).catch(error => {
+            // 显示错误信息
+            const errorContainer = document.createElement('div');
+            errorContainer.setAttribute('data-scroll-container', 'true');
+            errorContainer.style.height = '100%';
+            errorContainer.style.overflowY = 'auto';
+            errorContainer.style.padding = '20px';
+            errorContainer.style.boxSizing = 'border-box';
+            errorContainer.style.textAlign = isMobile ? 'center' : 'left';
+            errorContainer.style.color = colors.errorText;
+            errorContainer.textContent = '加载题目失败：' + error.message;
+
+            // 替换加载提示
+            const oldContainer = problemDisplay.querySelector('[data-scroll-container]');
+            if (oldContainer) {
+                oldContainer.remove();
+            }
+            problemDisplay.appendChild(errorContainer);
+
+            // 重新添加关闭按钮
+            const closeBtn = problemDisplay.querySelector('.problem-display-close');
+            if (closeBtn) {
+                problemDisplay.appendChild(closeBtn);
+            }
+        });
+    }
+}
+
+// 获取洛谷题目数据（支持 P/B 分离 + 二分查找）
+async function fetchLuoguProblemData(problemId) {
+    const normalized = problemId.toUpperCase();
+    const match = normalized.match(/^([BP])(\d+)$/);
+    if (!match) return null;
+
+    const type = match[1]; // 'P' 或 'B'
+    const indexRes = await fetch('static/data/luogu_index.json');
+    if (!indexRes.ok) return null;
+    const index = await indexRes.json();
+    const chunks = index.types?.[type];
+    if (!chunks || chunks.length === 0) return null;
+
+    // 二分查找目标分片
+    let low = 0, high = chunks.length - 1;
+    let targetChunk = null;
+    while (low <= high) {
+        const mid = Math.floor((low + high) / 2);
+        const chunk = chunks[mid];
+        const minNum = parseInt(chunk.min_pid.slice(1), 10);
+        const maxNum = parseInt(chunk.max_pid.slice(1), 10);
+        const targetNum = parseInt(match[2], 10);
+
+        if (targetNum >= minNum && targetNum <= maxNum) {
+            targetChunk = chunk;
+            break;
+        } else if (targetNum < minNum) {
+            high = mid - 1;
+        } else {
+            low = mid + 1;
+        }
+    }
+
+    if (!targetChunk) return null;
+
+    // 加载目标分片
+    const fileRes = await fetch(`static/data/${targetChunk.file}`);
+    if (!fileRes.ok) return null;
+    const text = await fileRes.text();
+    const lines = text.split('\n').filter(line => line.trim());
+    for (const line of lines) {
+        try {
+            const data = JSON.parse(line);
+            if (data.pid && data.pid.toUpperCase() === normalized) {
+                return data;
+            }
+        } catch (e) {
+            // 忽略解析错误
+        }
+    }
+    return null; // 题目不存在于该分片中（可能缺失）
+}
+
+// 创建题目显示区域
+function createProblemDisplayArea() {
+    const colors = getLuoguThemeColors();
+    // 检查是否已经存在题目显示区域
+    let problemDisplay = document.getElementById('problem-display');
+    if (!problemDisplay) {
+        // 创建题目显示区域
+        problemDisplay = document.createElement('div');
+        problemDisplay.id = 'problem-display';
+
+        // 检测是否为移动设备 - 使用键盘显示状态作为参考
+        const keyboardContainer = document.getElementById('keyboard-container');
+        const isMobile = !isFullMode; // 非全屏模式视为移动设备
+
+        if (isMobile) {
+            // 移动设备上的样式
+            problemDisplay.style.position = 'fixed';
+            problemDisplay.style.top = '36px';
+            problemDisplay.style.left = '0';
+            problemDisplay.style.right = '0';
+            problemDisplay.style.bottom = '0';
+            problemDisplay.style.width = 'auto';
+            problemDisplay.style.height = 'auto';
+            problemDisplay.style.backgroundColor = colors.bg;
+            problemDisplay.style.zIndex = '100';
+            problemDisplay.style.overflowY = 'hidden'; // 隐藏滚动条，使用按钮滚动
+            problemDisplay.style.touchAction = 'none'; // 禁用触摸操作，使用按钮滚动
+            problemDisplay.style.display = 'none';
+            problemDisplay.style.boxShadow = '0 0 15px rgba(0,0,0,0.5)';
+
+            // 添加关闭按钮
+            const closeBtn = document.createElement('div');
+            closeBtn.innerHTML = '×';
+            closeBtn.className = 'problem-display-close';
+            closeBtn.style.position = 'absolute';
+            closeBtn.style.top = '10px';
+            closeBtn.style.right = '10px';
+            closeBtn.style.cursor = 'pointer';
+            closeBtn.style.fontSize = '24px';
+            closeBtn.style.color = colors.textSecondary;
+            closeBtn.style.zIndex = '101';
+            closeBtn.addEventListener('click', function() {
+                problemDisplay.style.display = 'none';
+            });
+
+            problemDisplay.appendChild(closeBtn);
+            document.body.appendChild(problemDisplay);
+        } else {
+            // 桌面设备上的样式
+            problemDisplay.style.position = 'fixed';
+            problemDisplay.style.top = '36px';
+            problemDisplay.style.right = '0';
+            problemDisplay.style.width = '400px';
+            problemDisplay.style.height = 'calc(100vh - 36px)';
+            problemDisplay.style.backgroundColor = colors.bg;
+            problemDisplay.style.borderLeft = '1px solid ' + colors.border;
+            problemDisplay.style.zIndex = '100';
+            problemDisplay.style.overflowY = 'hidden'; // 隐藏 problemDisplay 的滚动，由 scrollContainer 负责
+            problemDisplay.style.display = 'none';
+            problemDisplay.style.boxShadow = '-5px 0 15px rgba(0,0,0,0.5)';
+
+            // 添加关闭按钮
+            const closeBtn = document.createElement('div');
+            closeBtn.innerHTML = '×';
+            closeBtn.className = 'problem-display-close';
+            closeBtn.style.position = 'absolute';
+            closeBtn.style.top = '10px';
+            closeBtn.style.right = '10px';
+            closeBtn.style.cursor = 'pointer';
+            closeBtn.style.fontSize = '24px';
+            closeBtn.style.color = colors.textSecondary;
+            closeBtn.style.zIndex = '101';
+            closeBtn.addEventListener('click', function() {
+                problemDisplay.style.display = 'none';
+                // 同时隐藏 resizer
+                const resizer = document.getElementById('problem-display-resizer');
+                if (resizer) {
+                    resizer.style.display = 'none';
+                }
+            });
+
+            problemDisplay.appendChild(closeBtn);
+            document.body.appendChild(problemDisplay);
+
+            // 添加可拖动调整大小的边缘（在面板外部，与 output-resizer 类似）
+            const resizer = document.createElement('div');
+            resizer.id = 'problem-display-resizer';
+            resizer.style.position = 'fixed';
+            resizer.style.top = '36px';
+            resizer.style.left = 'calc(100% - 400px)'; // 使用百分比定位，跟随面板左边缘
+            resizer.style.width = '15px';
+            resizer.style.height = 'calc(100vh - 36px)';
+            resizer.style.cursor = 'ew-resize';
+            resizer.style.zIndex = '101';
+            resizer.style.backgroundColor = 'transparent';
+            resizer.style.transition = 'background-color 0.2s';
+            resizer.style.display = 'none';
+            resizer.addEventListener('mouseenter', function() {
+                this.style.backgroundColor = 'rgba(0, 122, 204, 0.3)';
+            });
+            resizer.addEventListener('mouseleave', function() {
+                this.style.backgroundColor = 'transparent';
+            });
+
+            // 拖动调整大小逻辑
+            let isResizing = false;
+            let startX = 0;
+            let startWidth = 0;
+
+            resizer.addEventListener('mousedown', function(e) {
+                isResizing = true;
+                startX = e.clientX;
+                startWidth = problemDisplay.offsetWidth;
+                document.body.style.cursor = 'ew-resize';
+                document.body.style.userSelect = 'none';
+                e.preventDefault();
+            });
+
+            document.addEventListener('mousemove', function(e) {
+                if (!isResizing) return;
+                const deltaX = startX - e.clientX;
+                const newWidth = startWidth + deltaX;
+                if (newWidth >= 200 && newWidth <= window.innerWidth - 200) {
+                    problemDisplay.style.width = newWidth + 'px';
+                    // 使用 left 定位，跟随面板宽度变化
+                    resizer.style.left = 'calc(100% - ' + newWidth + 'px)';
+                }
+            });
+
+            document.addEventListener('mouseup', function() {
+                if (isResizing) {
+                    isResizing = false;
+                    document.body.style.cursor = '';
+                    document.body.style.userSelect = '';
+                }
+            });
+
+            document.body.appendChild(resizer);
+            
+            // 监听窗口大小变化，自动调整 resizer 位置
+            window.addEventListener('resize', function() {
+                const resizer = document.getElementById('problem-display-resizer');
+                if (resizer && problemDisplay.style.display !== 'none') {
+                    resizer.style.left = 'calc(100% - ' + problemDisplay.offsetWidth + 'px)';
+                }
+            });
+        }
+    }
+
+    return problemDisplay;
+}
+
+// 显示洛谷题目
+function displayLuoguProblem(problemData) {
+    const colors = getLuoguThemeColors();
+    const problemDisplay = document.getElementById('problem-display');
+    if (!problemDisplay) return;
+
+    // 检测是否为移动设备 - 使用 isFullMode 变量作为参考
+    const isMobile = !isFullMode; // 非全屏模式视为移动设备
+
+    // 保存关闭按钮（如果存在）
+    const existingCloseBtn = problemDisplay.querySelector('.problem-display-close');
+
+    // 清空内容区域（不删除关闭按钮）
+    // 先获取所有需要保留的元素
+    const oldScrollContainer = problemDisplay.querySelector('[data-scroll-container]');
+    if (oldScrollContainer) {
+        oldScrollContainer.remove();
+    }
+
+    problemDisplay.style.display = 'block';
+
+    // 在桌面端显示 resizer
+    if (!isMobile) {
+        const resizer = document.getElementById('problem-display-resizer');
+        if (resizer) {
+            resizer.style.display = 'block';
+            // 更新 resizer 位置以匹配当前面板宽度
+            resizer.style.left = 'calc(100% - ' + problemDisplay.offsetWidth + 'px)';
+        }
+    }
+
+    // 创建滚动容器
+    const scrollContainer = document.createElement('div');
+    scrollContainer.style.height = '100%';
+    scrollContainer.style.overflowY = 'auto';
+    scrollContainer.style.padding = '20px';
+    scrollContainer.style.boxSizing = 'border-box';
+    scrollContainer.style.touchAction = 'none';
+    scrollContainer.setAttribute('data-scroll-container', 'true');
+    if (typeof _enableCustomTouchScroll === 'function') {
+        _enableCustomTouchScroll(scrollContainer);
+    }
+
+    // 先添加滚动容器，再添加关闭按钮（确保关闭按钮在最上层）
+    problemDisplay.appendChild(scrollContainer);
+
+    // 重新添加关闭按钮（如果之前存在），确保它在 scrollContainer 之后，这样 z-index 才能生效
+    if (existingCloseBtn) {
+        problemDisplay.appendChild(existingCloseBtn);
+    }
+
+    // 难度标签
+    const difficultyTag = document.createElement('div');
+    difficultyTag.style.display = 'inline-block';
+    difficultyTag.style.padding = '4px 8px';
+    difficultyTag.style.borderRadius = '4px';
+    difficultyTag.style.fontSize = '12px';
+    difficultyTag.style.fontWeight = 'bold';
+    difficultyTag.style.marginRight = '10px';
+    difficultyTag.style.verticalAlign = 'middle';
+
+    // 根据难度设置颜色
+    switch(problemData.difficulty) {
+        case 0: // 暂无评定
+            difficultyTag.style.backgroundColor = colors.difficultyGray;
+            difficultyTag.style.color = 'white';
+            difficultyTag.textContent = '暂无评定';
+            break;
+        case 1: // 入门
+            difficultyTag.style.backgroundColor = colors.difficultyRed;
+            difficultyTag.style.color = 'white';
+            difficultyTag.textContent = '入门';
+            break;
+        case 2: // 普及-
+            difficultyTag.style.backgroundColor = colors.difficultyOrange;
+            difficultyTag.style.color = 'white';
+            difficultyTag.textContent = '普及-';
+            break;
+        case 3: // 普及/提高-
+            difficultyTag.style.backgroundColor = colors.difficultyYellow;
+            difficultyTag.style.color = 'black';
+            difficultyTag.textContent = '普及/提高-';
+            break;
+        case 4: // 普及+/提高
+            difficultyTag.style.backgroundColor = colors.difficultyGreen;
+            difficultyTag.style.color = 'white';
+            difficultyTag.textContent = '普及+/提高';
+            break;
+        case 5: // 提高+/省选-
+            difficultyTag.style.backgroundColor = colors.difficultyBlue;
+            difficultyTag.style.color = 'white';
+            difficultyTag.textContent = '提高+/省选-';
+            break;
+        case 6: // 省选/NOI-
+            difficultyTag.style.backgroundColor = colors.difficultyPurple;
+            difficultyTag.style.color = 'white';
+            difficultyTag.textContent = '省选/NOI-';
+            break;
+        case 7: // NOI/NOI+/CTSC
+            difficultyTag.style.backgroundColor = colors.difficultyDarkPurple;
+            difficultyTag.style.color = 'white';
+            difficultyTag.textContent = 'NOI/NOI+/CTSC';
+            break;
+        default:
+            difficultyTag.style.backgroundColor = colors.difficultyGray;
+            difficultyTag.style.color = 'white';
+            difficultyTag.textContent = '未知难度';
+    }
+
+    // 标题区域
+    const titleContainer = document.createElement('div');
+    titleContainer.style.display = 'flex';
+    titleContainer.style.justifyContent = 'space-between';
+    titleContainer.style.alignItems = 'center';
+    titleContainer.style.marginTop = '30px';
+    titleContainer.style.flexWrap = 'wrap';
+    titleContainer.style.gap = '10px';
+
+    const titleElement = document.createElement('h2');
+    titleElement.style.color = colors.textSecondary;
+    titleElement.style.margin = '0';
+    titleElement.style.flex = '1';
+    titleElement.style.minWidth = '0';
+    titleElement.style.display = 'flex';
+    titleElement.style.alignItems = 'center';
+    titleElement.appendChild(difficultyTag);
+
+    const titleSpan = document.createElement('span');
+    titleSpan.textContent = `${problemData.pid}. ${problemData.title}`;
+    titleElement.appendChild(titleSpan);
+
+    const linkButton = document.createElement('a');
+    linkButton.href = `https://www.luogu.com.cn/problem/${problemData.pid}`;
+    linkButton.target = '_blank';
+    linkButton.style.backgroundColor = colors.btnPrimary;
+    linkButton.style.color = 'white';
+    linkButton.style.padding = '8px 16px';
+    linkButton.style.textDecoration = 'none';
+    linkButton.style.borderRadius = '4px';
+    linkButton.style.fontSize = '14px';
+    linkButton.style.whiteSpace = 'nowrap';
+    linkButton.textContent = '跳转到洛谷';
+
+    // 检查CPH插件是否启用，如果启用则显示"传送至cph"按钮
+    const cphTransferButton = document.createElement('button');
+    const cphPluginEnabled = localStorage.getItem('cph_plugin_enabled') === 'true';
+    
+    if (cphPluginEnabled) {
+        cphTransferButton.textContent = '传送至CPH';
+        cphTransferButton.style.backgroundColor = colors.btnCph; // 紫色背景，区别于洛谷的蓝色
+        cphTransferButton.style.color = 'white';
+        cphTransferButton.style.padding = '8px 16px';
+        cphTransferButton.style.textDecoration = 'none';
+        cphTransferButton.style.border = 'none';
+        cphTransferButton.style.borderRadius = '4px';
+        cphTransferButton.style.fontSize = '14px';
+        cphTransferButton.style.whiteSpace = 'nowrap';
+        cphTransferButton.style.marginRight = '10px';
+        cphTransferButton.style.cursor = 'pointer';
+        
+        // 添加点击事件，传输题目数据到CPH
+        cphTransferButton.addEventListener('click', function(e) {
+            e.preventDefault();
+            transferProblemToCPH(problemData);
+        });
+    } else {
+        // 如果CPH插件未启用，隐藏按钮
+        cphTransferButton.style.display = 'none';
+    }
+
+    titleContainer.appendChild(titleElement);
+    // 翻译按钮
+    const translateButton = document.createElement('button');
+    translateButton.textContent = '翻译';
+    translateButton.style.backgroundColor = colors.btnTranslate;
+    translateButton.style.color = 'white';
+    translateButton.style.padding = '8px 16px';
+    translateButton.style.textDecoration = 'none';
+    translateButton.style.border = 'none';
+    translateButton.style.borderRadius = '4px';
+    translateButton.style.fontSize = '14px';
+    translateButton.style.whiteSpace = 'nowrap';
+    translateButton.style.marginRight = '10px';
+    translateButton.style.cursor = 'pointer';
+
+    // 保存原始内容和翻译状态的变量
+    let isTranslated = false;
+    let originalContent = {
+        description: problemData.description || '',
+        inputFormat: problemData.inputFormat || '',
+        outputFormat: problemData.outputFormat || '',
+        hint: problemData.hint || ''
+    };
+    let translatedContent = {
+        description: '',
+        inputFormat: '',
+        outputFormat: '',
+        hint: ''
+    };
+
+    translateButton.addEventListener('click', function(e) {
+        e.preventDefault();
+        if (isTranslated) {
+            // 返回原文
+            const renderOptions = {
+                delimiters: [
+                    {left: "$$", right: "$$", display: true},
+                    {left: "$", right: "$", display: false},
+                    {left: "\\(", right: "\\)", display: false},
+                    {left: "\\[", right: "\\]", display: true}
+                ],
+                throwOnError: false
+            };
+
+            const descElement = document.getElementById('problem-description');
+            const inputFormatElement = document.getElementById('problem-input-format');
+            const outputFormatElement = document.getElementById('problem-output-format');
+            const hintElement = document.getElementById('problem-hint');
+
+            if (descElement) {
+                descElement.innerHTML = marked.parse(originalContent.description);
+                renderMathInElement(descElement, renderOptions);
+            }
+            if (inputFormatElement) {
+                inputFormatElement.innerHTML = marked.parse(originalContent.inputFormat);
+                renderMathInElement(inputFormatElement, renderOptions);
+            }
+            if (outputFormatElement) {
+                outputFormatElement.innerHTML = marked.parse(originalContent.outputFormat);
+                renderMathInElement(outputFormatElement, renderOptions);
+            }
+            if (hintElement) {
+                hintElement.innerHTML = marked.parse(originalContent.hint);
+                renderMathInElement(hintElement, renderOptions);
+            }
+
+            translateButton.textContent = '翻译';
+            translateButton.style.backgroundColor = colors.btnTranslate;
+            isTranslated = false;
+
+            if (typeof showMessage === 'function') {
+                showMessage('已返回原文', 'success');
+            }
+        } else {
+            // 翻译
+            translateProblemContent(problemData, translateButton, originalContent, translatedContent, function() {
+                isTranslated = true;
+            });
+        }
+    });
+
+    // 依次添加翻译按钮、CPH 按钮、洛谷按钮
+    titleContainer.appendChild(translateButton);
+    titleContainer.appendChild(cphTransferButton);
+    titleContainer.appendChild(linkButton);
+    scrollContainer.appendChild(titleContainer);
+
+    // 题目描述
+    const descSection = document.createElement('div');
+    descSection.style.margin = '20px 0';
+
+    const descHeading = document.createElement('h3');
+    descHeading.style.color = colors.headingColor;
+    descHeading.textContent = '题目描述';
+
+    const descContent = document.createElement('div');
+    descContent.id = 'problem-description';
+    descContent.style.color = colors.text;
+    descContent.style.lineHeight = '1.6';
+
+    descSection.appendChild(descHeading);
+    descSection.appendChild(descContent);
+    scrollContainer.appendChild(descSection);
+
+    // 输入格式
+    const inputSection = document.createElement('div');
+    inputSection.style.margin = '20px 0';
+
+    const inputHeading = document.createElement('h3');
+    inputHeading.style.color = colors.headingColor;
+    inputHeading.textContent = '输入格式';
+
+    const inputContent = document.createElement('div');
+    inputContent.id = 'problem-input-format';
+    inputContent.style.color = colors.text;
+    inputContent.style.lineHeight = '1.6';
+
+    inputSection.appendChild(inputHeading);
+    inputSection.appendChild(inputContent);
+    scrollContainer.appendChild(inputSection);
+
+    // 输出格式
+    const outputSection = document.createElement('div');
+    outputSection.style.margin = '20px 0';
+
+    const outputHeading = document.createElement('h3');
+    outputHeading.style.color = colors.headingColor;
+    outputHeading.textContent = '输出格式';
+
+    const outputContent = document.createElement('div');
+    outputContent.id = 'problem-output-format';
+    outputContent.style.color = colors.text;
+    outputContent.style.lineHeight = '1.6';
+
+    outputSection.appendChild(outputHeading);
+    outputSection.appendChild(outputContent);
+    scrollContainer.appendChild(outputSection);
+
+    // 样例
+    if (problemData.samples && Array.isArray(problemData.samples) && problemData.samples.length > 0) {
+        const samplesSection = document.createElement('div');
+        samplesSection.style.margin = '20px 0';
+
+        const samplesHeading = document.createElement('h3');
+        samplesHeading.style.color = colors.headingColor;
+        samplesHeading.textContent = '样例';
+
+        samplesSection.appendChild(samplesHeading);
+
+        problemData.samples.forEach((sample, index) => {
+            const sampleContainer = document.createElement('div');
+            sampleContainer.style.margin = '15px 0';
+            sampleContainer.style.border = '1px solid ' + colors.border;
+            sampleContainer.style.borderRadius = '4px';
+            sampleContainer.style.overflow = 'hidden';
+
+            // 输入部分
+            const inputBlock = document.createElement('div');
+            inputBlock.style.padding = '10px';
+            inputBlock.style.backgroundColor = colors.bgAlt;
+
+            const inputLabel = document.createElement('div');
+            inputLabel.style.color = colors.warnText;
+            inputLabel.style.fontWeight = 'bold';
+            inputLabel.style.marginBottom = '5px';
+            inputLabel.textContent = `输入 #${index + 1}`;
+
+            const inputPre = document.createElement('pre');
+            inputPre.style.background = colors.bg;
+            inputPre.style.padding = '10px';
+            inputPre.style.border = '1px solid ' + colors.border;
+            inputPre.style.color = colors.text;
+            inputPre.style.whiteSpace = 'pre-wrap';
+            inputPre.style.margin = '0';
+            inputPre.style.overflowX = 'auto';
+            inputPre.style.webkitOverflowScrolling = 'touch';
+            inputPre.textContent = sample[0];
+
+            inputBlock.appendChild(inputLabel);
+            inputBlock.appendChild(inputPre);
+
+            // 输出部分
+            const outputBlock = document.createElement('div');
+            outputBlock.style.padding = '10px';
+            outputBlock.style.backgroundColor = colors.bgAlt;
+
+            const outputLabel = document.createElement('div');
+            outputLabel.style.color = colors.warnText;
+            outputLabel.style.fontWeight = 'bold';
+            outputLabel.style.marginBottom = '5px';
+            outputLabel.textContent = `输出 #${index + 1}`;
+
+            const outputPre = document.createElement('pre');
+            outputPre.style.background = colors.bg;
+            outputPre.style.padding = '10px';
+            outputPre.style.border = '1px solid ' + colors.border;
+            outputPre.style.color = colors.text;
+            outputPre.style.whiteSpace = 'pre-wrap';
+            outputPre.style.margin = '0';
+            outputPre.style.overflowX = 'auto';
+            outputPre.style.webkitOverflowScrolling = 'touch';
+            outputPre.textContent = sample[1];
+
+            outputBlock.appendChild(outputLabel);
+            outputBlock.appendChild(outputPre);
+
+            sampleContainer.appendChild(inputBlock);
+            sampleContainer.appendChild(outputBlock);
+            samplesSection.appendChild(sampleContainer);
+        });
+
+        scrollContainer.appendChild(samplesSection);
+    }
+
+    // 提示
+    if (problemData.hint) {
+        const hintSection = document.createElement('div');
+        hintSection.style.margin = '20px 0';
+
+        const hintHeading = document.createElement('h3');
+        hintHeading.style.color = colors.headingColor;
+        hintHeading.textContent = '提示';
+
+        const hintContent = document.createElement('div');
+        hintContent.id = 'problem-hint';
+        hintContent.style.color = colors.text;
+        hintContent.style.lineHeight = '1.6';
+
+        hintSection.appendChild(hintHeading);
+        hintSection.appendChild(hintContent);
+        scrollContainer.appendChild(hintSection);
+    }
+
+    problemDisplay.appendChild(scrollContainer);
+
+    // 在移动设备上，临时隐藏编辑器区域以显示题目详情
+    if (isMobile) {
+        const editorArea = document.getElementById('editor-area');
+        if (editorArea) {
+            editorArea.style.display = 'none';
+        }
+
+        // 添加一个返回编辑器的按钮
+        const backButton = document.createElement('div');
+        backButton.innerHTML = '返回编辑器';
+        backButton.style.position = 'fixed';
+        backButton.style.bottom = '20px';
+        backButton.style.left = '50%';
+        backButton.style.transform = 'translateX(-50%)';
+        backButton.style.backgroundColor = colors.btnPrimary;
+        backButton.style.color = 'white';
+        backButton.style.padding = '12px 24px';
+        backButton.style.borderRadius = '30px';
+        backButton.style.cursor = 'pointer';
+        backButton.style.zIndex = '102';
+        backButton.style.textAlign = 'center';
+        backButton.style.fontSize = '16px';
+        backButton.style.fontWeight = 'bold';
+        backButton.style.boxSizing = 'border-box';
+        backButton.id = 'back-to-editor-btn';
+
+        backButton.addEventListener('click', function() {
+            problemDisplay.style.display = 'none';
+            const editorArea = document.getElementById('editor-area');
+            if (editorArea) {
+                editorArea.style.display = 'flex';
+            }
+
+            // 恢复背景页面滚动
+            document.body.style.overflow = '';
+        });
+
+        problemDisplay.appendChild(backButton);
+
+        // 确保在移动设备上可以滚动
+        document.body.style.overflow = 'hidden';  // 防止背景页面滚动
+    } else {
+        // 在桌面设备上，确保滚动正常
+        document.body.style.overflow = '';
+    }
+
+    // 渲染Markdown和LaTeX内容
+    renderMarkdownAndLatex('problem-description', problemData.description || '');
+    renderMarkdownAndLatex('problem-input-format', problemData.inputFormat || '');
+    renderMarkdownAndLatex('problem-output-format', problemData.outputFormat || '');
+    if (problemData.hint) {
+        renderMarkdownAndLatex('problem-hint', problemData.hint);
+    }
+
+    // 添加关闭按钮
+    const closeBtn = document.createElement('div');
+    closeBtn.innerHTML = '×';
+    closeBtn.style.position = 'absolute';
+    closeBtn.style.top = '10px';
+    closeBtn.style.right = '10px';
+    closeBtn.style.cursor = 'pointer';
+    closeBtn.style.fontSize = '24px';
+    closeBtn.style.color = colors.textSecondary;
+    closeBtn.style.zIndex = '101';
+    closeBtn.addEventListener('click', function() {
+        problemDisplay.style.display = 'none';
+
+        // 在移动设备上，关闭题目显示后恢复编辑器显示
+        if (isMobile) {
+            const editorArea = document.getElementById('editor-area');
+            if (editorArea) {
+                editorArea.style.display = 'flex';
+
+                // 检查当前是否为手机模式（通过检查lines-container的显示状态）
+                const linesContainer = document.getElementById('lines-container');
+                if (linesContainer && linesContainer.style.display !== 'none') {
+                    // 当前是手机模式，确保3行预览区域可见
+                    linesContainer.style.display = 'flex';
+
+                    // 隐藏Monaco编辑器（在手机模式下）
+                    const editorContainer = document.getElementById('editor-container');
+                    if (editorContainer) {
+                        editorContainer.style.display = 'none';
+                    }
+                }
+            }
+
+            // 移除返回编辑器按钮
+            const backButton = document.getElementById('back-to-editor-btn');
+            if (backButton && backButton.parentNode === problemDisplay) {
+                backButton.parentNode.removeChild(backButton);
+            }
+
+            // 恢复背景页面滚动
+            document.body.style.overflow = '';
+        } else {
+            // 在桌面设备上，确保滚动正常
+            document.body.style.overflow = '';
+        }
+    });
+
+    problemDisplay.appendChild(closeBtn);
+
+    // 在移动端添加滚动按钮
+    if (isMobile) {
+        // 上移按钮
+        const upBtn = document.createElement('div');
+        upBtn.innerHTML = '↑';
+        upBtn.className = 'up-btn-mobile';
+
+        // 上移按钮点击事件
+        let upBtnInterval;
+        upBtn.addEventListener('mousedown', function() {
+            scrollContainer.scrollTop -= 50;
+            upBtnInterval = setInterval(() => {
+                scrollContainer.scrollTop -= 50;
+            }, 100);
+        });
+
+        upBtn.addEventListener('touchstart', function(e) {
+            e.preventDefault();
+            scrollContainer.scrollTop -= 50;
+            upBtnInterval = setInterval(() => {
+                scrollContainer.scrollTop -= 50;
+            }, 100);
+        });
+
+        upBtn.addEventListener('mouseup', function() {
+            clearInterval(upBtnInterval);
+        });
+
+        upBtn.addEventListener('touchend', function() {
+            clearInterval(upBtnInterval);
+        });
+
+        upBtn.addEventListener('mouseleave', function() {
+            clearInterval(upBtnInterval);
+        });
+
+        problemDisplay.appendChild(upBtn);
+
+        // 下移按钮
+        const downBtn = document.createElement('div');
+        downBtn.innerHTML = '↓';
+        downBtn.className = 'down-btn-mobile';
+
+        // 下移按钮点击事件
+        let downBtnInterval;
+        downBtn.addEventListener('mousedown', function() {
+            scrollContainer.scrollTop += 50;
+            downBtnInterval = setInterval(() => {
+                scrollContainer.scrollTop += 50;
+            }, 100);
+        });
+
+        downBtn.addEventListener('touchstart', function(e) {
+            e.preventDefault();
+            scrollContainer.scrollTop += 50;
+            downBtnInterval = setInterval(() => {
+                scrollContainer.scrollTop += 50;
+            }, 100);
+        });
+
+        downBtn.addEventListener('mouseup', function() {
+            clearInterval(downBtnInterval);
+        });
+
+        downBtn.addEventListener('touchend', function() {
+            clearInterval(downBtnInterval);
+        });
+
+        downBtn.addEventListener('mouseleave', function() {
+            clearInterval(downBtnInterval);
+        });
+
+        problemDisplay.appendChild(downBtn);
+    }
+}
+
+// 渲染Markdown和LaTeX内容
+function renderMarkdownAndLatex(elementId, content) {
+    const element = document.getElementById(elementId);
+    if (!element) return;
+
+    // 使用Marked解析Markdown
+    const markdownContent = marked.parse(content);
+
+    // 设置HTML内容
+    element.innerHTML = markdownContent;
+
+    // 使用KaTeX渲染数学公式
+    renderMathInElement(element, {
+        delimiters: [
+            {left: "$$", right: "$$", display: true},
+            {left: "$", right: "$", display: false},
+            {left: "\\(", right: "\\)", display: false},
+            {left: "\\[", right: "\\]", display: true}
+        ],
+        throwOnError: false
+    });
+}
+
+// 传输题目数据到CPH插件
+async function transferProblemToCPH(problemData) {
+    try {
+        // 提取题目编号，移除特殊字符，只保留字母和数字
+        const problemId = problemData.pid.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+
+        // 准备测试用例数据
+        const testCases = [];
+        if (problemData.samples && Array.isArray(problemData.samples) && problemData.samples.length > 0) {
+            problemData.samples.forEach((sample, index) => {
+                testCases.push({
+                    stdin: sample[0],
+                    stdout: sample[1],
+                    name: `样例 ${index + 1}`
+                });
+            });
+        }
+
+        const fileName = `${problemId}.cpp`;
+        
+        // 首先确保在编辑器中创建并打开对应的cpp文件
+        await createAndOpenCppFile(fileName);
+        
+        // 然后发送消息到CPH插件
+        if (window.cphPlugin) {
+            // 如果当前不是目标文件，切换到目标文件
+            if (window.cphPlugin.currentFile !== fileName) {
+                // 保存当前文件的测试用例
+                if (window.cphPlugin.testCases) {
+                    window.cphPlugin.saveTestCases();
+                }
+                
+                // 切换到新文件
+                window.cphPlugin.currentFile = fileName;
+                // 加载新文件的测试用例（如果是新文件则为空）
+                window.cphPlugin.testCases = window.cphPlugin.loadTestCases();
+                
+                // 触发文件更改事件，通知编辑器
+                localStorage.setItem('phoi_currentFileName', fileName);
+            }
+            
+            // 添加测试用例
+            testCases.forEach(testCase => {
+                // 检查是否已存在相同的测试用例
+                const exists = window.cphPlugin.testCases.some(existingCase => 
+                    existingCase.stdin === testCase.stdin && existingCase.stdout === testCase.stdout
+                );
+                
+                if (!exists) {
+                    window.cphPlugin.testCases.push(testCase);
+                }
+            });
+            
+            // 保存测试用例
+            window.cphPlugin.saveTestCases();
+            
+            // 更新UI
+            window.cphPlugin.renderTestCases();
+            window.cphPlugin.renderTestCasesMain();
+            
+            // 安全地调用showMessage函数
+            if (typeof showMessage === 'function') {
+                showMessage(`成功传输 ${testCases.length} 个测试用例到CPH: ${fileName}`, 'success');
+            } else {
+                console.log(`成功传输 ${testCases.length} 个测试用例到CPH: ${fileName}`);
+            }
+        } else {
+            // 如果CPH插件未初始化，抛出异常
+            throw new Error('CPH插件未初始化');
+        }
+    } catch (error) {
+        console.error('传输题目到CPH失败:', error);
+        // 安全地调用showMessage函数
+        if (typeof showMessage === 'function') {
+            showMessage('传输题目到CPH失败: ' + error.message, 'error');
+        } else {
+            console.error('传输题目到CPH失败: ' + error.message);
+        }
+    }
+}
+
+// 创建并打开cpp文件
+async function createAndOpenCppFile(fileName) {
+    // 使用PhoiAPI创建和打开文件
+    if (!window.PhoiAPI) {
+        console.error('PhoiAPI 未初始化');
+        if (typeof showMessage === 'function') {
+            showMessage('PhoiAPI 未初始化，无法创建文件', 'error');
+        }
+        return;
+    }
+    try {
+        // 检查文件是否已存在
+        const fileList = await window.PhoiAPI.getFileList();
+        const lower = fileName.toLowerCase();
+        const existingFile = fileList.find(f => f.toLowerCase() === lower);
+        if (existingFile) {
+            // 文件已存在，直接打开
+            await window.PhoiAPI.openFile(fileName);
+        } else {
+            // 文件不存在，创建新文件并打开
+            const result = await window.PhoiAPI.createNewFile(fileName);
+            if (!result) {
+                throw new Error('PhoiAPI.createNewFile 返回失败');
+            }
+        }
+    } catch (err) {
+        console.error('创建/打开文件失败:', err);
+        if (typeof showMessage === 'function') {
+            showMessage('创建文件失败: ' + err.message, 'error');
+        }
+    }
+}
+
+// 验证是否为有效的Markdown格式题目
+function isValidMarkdownProblem(text) {
+    // 检查是否包含基本的题目标识，如标题以#开头
+    const lines = text.split('\n');
+    for (let i = 0; i < Math.min(5, lines.length); i++) {
+        if (lines[i].trim().startsWith('#')) {
+            // 检查是否包含常见的题目部分
+            if (text.includes('题目描述') || text.includes('输入格式') || text.includes('输出格式')) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+// 解析并显示Markdown题目
+function parseAndDisplayMarkdownProblem(markdownText) {
+    // 提取题号（从标题中提取P或B开头的题号）
+    const pidMatch = markdownText.match(/^#\s*[^\n]*?([PBUT]\d+)/im);
+    const pid = pidMatch ? pidMatch[1].toUpperCase() : 'MD'; // 标识这是Markdown导入的题目
+
+    // 提取题目标题
+    const titleMatch = markdownText.match(/^#\s*(.+)$/m);
+    const title = titleMatch ? titleMatch[1].trim() : '未命名题目';
+
+    // 提取样例
+    const samples = parseSamplesFromContent(markdownText);
+
+    // 创建模拟的题目对象，用于显示
+    const mockProblemData = {
+        pid: pid,
+        title: title,
+        // 直接使用原始Markdown文本作为描述
+        description: markdownText,
+        // 保留提取的样例
+        samples: samples
+    };
+
+    // 创建题目显示区域
+    createProblemDisplayArea();
+
+    // 显示题目
+    displayMarkdownProblem(mockProblemData);
+}
+
+// 分离Markdown题目各板块
+function separateMarkdownSections(markdownText) {
+    const sections = {};
+    const lines = markdownText.split('\n');
+    
+    // 先按标题分割整个文档
+    const sectionsByTitle = {};
+    let currentTitle = '';
+    let currentContent = [];
+    
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        
+        if (line.trim().startsWith('#')) {
+            // 保存上一个section
+            if (currentTitle) {
+                sectionsByTitle[currentTitle] = currentContent.join('\n');
+            }
+            
+            // 设置新的标题
+            currentTitle = line.trim();
+            currentContent = [];
+        } else {
+            currentContent.push(line);
+        }
+    }
+    
+    // 保存最后一个section
+    if (currentTitle) {
+        sectionsByTitle[currentTitle] = currentContent.join('\n');
+    }
+    
+    // 处理各个section
+    for (const title in sectionsByTitle) {
+        const content = sectionsByTitle[title];
+        
+        if (title.includes('题目描述') || title.includes('题目叙述')) {
+            sections.description = content;
+        } else if (title.includes('输入格式') || title.includes('输入说明')) {
+            sections.inputFormat = content;
+        } else if (title.includes('输出格式') || title.includes('输出说明')) {
+            sections.outputFormat = content;
+        } else if (title.includes('输入输出样例') || title.includes('样例') || title.includes('Sample')) {
+            // 解析样例部分
+            const samples = parseSamplesFromSection(content);
+            if (samples.length > 0) {
+                sections.samples = samples;
+            } else {
+                // 如果按常规方法没找到样例，尝试从整个内容中解析
+                const fallbackSamples = parseSamplesFromContent(markdownText);
+                if (fallbackSamples.length > 0) {
+                    sections.samples = fallbackSamples;
+                }
+            }
+        } else if (title.includes('提示') || title.includes('Hint') || title.includes('说明')) {
+            sections.hint = content;
+        }
+    }
+    
+    return sections;
+}
+
+// 从整个内容中解析样例（备用方法）
+function parseSamplesFromContent(markdownText) {
+    const samples = [];
+    
+    // 使用正则表达式匹配输入输出样例
+    // 匹配格式：### 输入 #1 ... ``` ... ``` ... ### 输出 #1 ... ``` ... ```
+    const sampleRegex = /###\s*输入\s*#(\d+)[\s\S]*?```(?:\w+)?\s*\n([\s\S]*?)\s*```[\s\S]*?###\s*输出\s*#(\d+)[\s\S]*?```(?:\w+)?\s*\n([\s\S]*?)\s*```/g;
+    
+    let match;
+    while ((match = sampleRegex.exec(markdownText)) !== null) {
+        const input = match[2].trim();
+        const output = match[4].trim();
+        
+        if (input && output) {
+            samples.push([input, output]);
+        }
+    }
+    
+    // 如果上面的正则表达式没有匹配到，尝试另一种格式
+    if (samples.length === 0) {
+        // 匹配格式：## 输入输出样例 ... ### 输入 #1 ... ``` ... ``` ... ### 输出 #1 ... ``` ... ```
+        const altSampleRegex = /##\s*输入输出样例[\s\S]*?###\s*输入\s*#(\d+)[\s\S]*?```(?:\w+)?\s*\n([\s\S]*?)\s*```[\s\S]*?###\s*输出\s*#(\d+)[\s\S]*?```(?:\w+)?\s*\n([\s\S]*?)\s*```/g;
+        
+        while ((match = altSampleRegex.exec(markdownText)) !== null) {
+            const input = match[2].trim();
+            const output = match[4].trim();
+            
+            if (input && output) {
+                samples.push([input, output]);
+            }
+        }
+    }
+    
+    // 如果还是没有匹配到，尝试更宽松的匹配
+    if (samples.length === 0) {
+        // 匹配任何"输入"和"输出"标题之间的代码块对
+        const looseRegex = /(##|#)?\s*#*\s*输入[\s\S]*?```(?:\w+)?\s*\n([\s\S]*?)\s*```[\s\S]*?(##|#)?\s*#*\s*输出[\s\S]*?```(?:\w+)?\s*\n([\s\S]*?)\s*```/g;
+        
+        while ((match = looseRegex.exec(markdownText)) !== null) {
+            const input = match[2].trim();
+            const output = match[4].trim();
+            
+            if (input && output) {
+                samples.push([input, output]);
+            }
+        }
+    }
+    
+    return samples;
+}
+
+// 从样例部分解析输入输出样例
+function parseSamplesFromSection(sectionContent) {
+    const samples = [];
+    const lines = sectionContent.split('\n');
+    
+    let currentInput = '';
+    let currentOutput = '';
+    let inInputSection = false;
+    let inOutputSection = false;
+    let insideCodeBlock = false;
+    let currentCodeBlock = '';
+    
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        
+        // 检查是否是子标题（如"输入 #1"、"输出 #1"等）
+        if ((line.trim().startsWith('### ') || line.trim().startsWith('## ')) && 
+            (line.includes('输入') || line.includes('输出'))) {
+            // 如果当前正在处理输入或输出，并且已经收集到了内容，保存当前样例
+            if ((inInputSection || inOutputSection) && currentInput && currentOutput) {
+                samples.push([currentInput.trim(), currentOutput.trim()]);
+                currentInput = '';
+                currentOutput = '';
+            }
+            
+            if (line.includes('输入')) {
+                inInputSection = true;
+                inOutputSection = false;
+                currentInput = '';
+            } else if (line.includes('输出')) {
+                inOutputSection = true;
+                inInputSection = false;
+                currentOutput = '';
+            }
+        } 
+        // 检查是否是代码块标记
+        else if (line.trim() === '```') {
+            if (insideCodeBlock) {
+                // 代码块结束
+                if (inInputSection) {
+                    currentInput += currentCodeBlock;
+                } else if (inOutputSection) {
+                    currentOutput += currentCodeBlock;
+                }
+                currentCodeBlock = '';
+                insideCodeBlock = false;
+            } else {
+                // 代码块开始
+                insideCodeBlock = true;
+                currentCodeBlock = '';
+            }
+        } 
+        // 如果在代码块内
+        else if (insideCodeBlock) {
+            currentCodeBlock += line + '\n';
+        }
+        // 如果在输入或输出区域内，但不在代码块内
+        else if (inInputSection && !insideCodeBlock) {
+            // 忽略非代码块内容，因为我们主要关心代码块内的样例
+        } else if (inOutputSection && !insideCodeBlock) {
+            // 忽略非代码块内容，因为我们主要关心代码块内的样例
+        }
+    }
+    
+    // 保存最后一个样例
+    if (currentInput && currentOutput) {
+        samples.push([currentInput.trim(), currentOutput.trim()]);
+    }
+    
+    return samples;
+}
+
+// 从代码块解析输入输出样例
+function parseSampleFromCodeBlock(codeBlock) {
+    const samples = [];
+    
+    // 按 ``` 分割，获取代码块内容
+    const codeBlocks = codeBlock.split('```');
+    
+    // 遍历每个代码块
+    for (let i = 1; i < codeBlocks.length; i += 2) { // 奇数索引是代码内容
+        const blockContent = codeBlocks[i].trim();
+        
+        // 检查是否在代码块前后有输入/输出标识
+        const prevBlock = codeBlocks[i - 1] || '';
+        const nextBlock = codeBlocks[i + 1] || '';
+        
+        // 检查前一个块是否包含"输入"字样
+        const hasInputBefore = /(#?\s*输入[^\n]*|Input[^\n]*)/i.test(prevBlock);
+        // 检查后一个块是否包含"输出"字样
+        const hasOutputAfter = /(#?\s*输出[^\n]*|Output[^\n]*)/i.test(nextBlock);
+        
+        if (hasInputBefore && hasOutputAfter) {
+            // 这种情况下，当前块是输入，下一个代码块是输出
+            if (i + 2 < codeBlocks.length) {
+                const outputBlock = codeBlocks[i + 2].trim();
+                samples.push([blockContent, outputBlock]);
+            }
+        } else if (hasInputBefore) {
+            // 当前块是输入，下一个代码块是输出
+            if (i + 2 < codeBlocks.length) {
+                const outputBlock = codeBlocks[i + 2].trim();
+                samples.push([blockContent, outputBlock]);
+            }
+        } else {
+            // 尝试检测当前代码块是否包含多个输入输出对
+            // 按"输入"和"输出"关键词分割
+            const splitByInOut = prevBlock.split(/(#?\s*输入[^\n]*|##?\s*输出[^\n]*|Input[^\n]*|Output[^\n]*)/gi);
+            
+            let currentInput = '';
+            let currentOutput = '';
+            let isReadingInput = false;
+            
+            for (let j = 0; j < splitByInOut.length; j++) {
+                const segment = splitByInOut[j];
+                
+                if (/输入|Input/i.test(segment)) {
+                    isReadingInput = true;
+                    // 下一个片段是输入内容
+                    if (j + 1 < splitByInOut.length) {
+                        currentInput = splitByInOut[j + 1].trim();
+                    }
+                } else if (/输出|Output/i.test(segment)) {
+                    isReadingInput = false;
+                    // 下一个片段是输出内容
+                    if (j + 1 < splitByInOut.length) {
+                        currentOutput = splitByInOut[j + 1].trim();
+                    }
+                    
+                    // 如果同时有输入和输出，添加为样例
+                    if (currentInput && currentOutput) {
+                        samples.push([currentInput, currentOutput]);
+                        currentInput = '';
+                        currentOutput = '';
+                    }
+                }
+            }
+        }
+    }
+    
+    // 如果还没有找到样例，尝试另一种方法：查找"输入 #1"、"输出 #1"等模式
+    if (samples.length === 0) {
+        const lines = codeBlock.split('\n');
+        let currentInput = '';
+        let currentOutput = '';
+        let inInputSection = false;
+        let inOutputSection = false;
+        
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i].trim();
+            
+            if (/输入\s*#[^0-9]*(\d+)/i.test(line) || /Input/i.test(line)) {
+                // 开始新的输入部分
+                if (currentInput && currentOutput) {
+                    // 保存之前的样例
+                    samples.push([currentInput.trim(), currentOutput.trim()]);
+                }
+                
+                inInputSection = true;
+                inOutputSection = false;
+                currentInput = '';
+            } else if (/输出\s*#[^0-9]*(\d+)/i.test(line) || /Output/i.test(line)) {
+                // 开始新的输出部分
+                inInputSection = false;
+                inOutputSection = true;
+                currentOutput = '';
+            } else if (line.startsWith('```') && line.endsWith('```')) {
+                // 单行代码块
+                const codeContent = line.substring(3, line.length - 3);
+                if (inInputSection) {
+                    currentInput += codeContent + '\n';
+                } else if (inOutputSection) {
+                    currentOutput += codeContent + '\n';
+                }
+            } else if (inInputSection) {
+                currentInput += line + '\n';
+            } else if (inOutputSection) {
+                currentOutput += line + '\n';
+            }
+        }
+        
+        // 添加最后一个样例
+        if (currentInput && currentOutput) {
+            samples.push([currentInput.trim(), currentOutput.trim()]);
+        }
+    }
+    
+    return samples;
+}
+
+// 显示Markdown题目
+function displayMarkdownProblem(problemData) {
+    const colors = getLuoguThemeColors();
+    const problemDisplay = document.getElementById('problem-display');
+    if (!problemDisplay) return;
+
+    // 检测是否为移动设备 - 使用 isFullMode 变量作为参考
+    const isMobile = !isFullMode; // 非全屏模式视为移动设备
+
+    // 清空并显示题目区域
+    problemDisplay.innerHTML = '';
+    problemDisplay.style.display = 'block';
+
+    // 创建滚动容器
+    const scrollContainer = document.createElement('div');
+    scrollContainer.style.height = '100%';
+    scrollContainer.style.overflowY = 'auto'; // 启用滚动以便按钮可以控制
+    scrollContainer.style.padding = '20px';
+    scrollContainer.style.boxSizing = 'border-box';
+    scrollContainer.style.touchAction = 'none'; // 禁用触摸操作，使用按钮滚动
+    if (typeof _enableCustomTouchScroll === 'function') {
+        _enableCustomTouchScroll(scrollContainer);
+    }
+
+    // 为移动端隐藏滚动条
+    if (isMobile) {
+        // 隐藏滚动条的样式
+        scrollContainer.style.msOverflowStyle = 'none';  // IE 和 Edge
+        scrollContainer.style.scrollbarWidth = 'none';  // Firefox
+
+        // 为 Webkit 浏览器隐藏滚动条
+        const style = document.createElement('style');
+        style.textContent = `
+            #problem-display [data-scroll-container]::-webkit-scrollbar {
+                display: none;  /* Chrome, Safari, Opera*/
+            }
+        `;
+        document.head.appendChild(style);
+    }
+
+    scrollContainer.setAttribute('data-scroll-container', 'true'); // 标记这个容器用于滚动
+
+    // 标题区域 - Markdown导入的题目不显示难度
+    const titleContainer = document.createElement('div');
+    titleContainer.style.display = 'flex';
+    titleContainer.style.justifyContent = 'space-between';
+    titleContainer.style.alignItems = 'center';
+    titleContainer.style.marginTop = '30px';
+    titleContainer.style.flexWrap = 'wrap';
+    titleContainer.style.gap = '10px';
+
+    const titleElement = document.createElement('h2');
+    titleElement.style.color = colors.textSecondary;
+    titleElement.style.margin = '0';
+    titleElement.style.flex = '1';
+    titleElement.style.minWidth = '0';
+    titleElement.style.display = 'flex';
+    titleElement.style.alignItems = 'center';
+
+    const titleSpan = document.createElement('span');
+    titleSpan.textContent = `${problemData.pid}. ${problemData.title}`;
+    titleElement.appendChild(titleSpan);
+
+    // Markdown导入的题目不显示跳转到洛谷的链接
+    // 检查CPH插件是否启用，如果启用则显示"传送至cph"按钮
+    const cphTransferButton = document.createElement('button');
+    const cphPluginEnabled = localStorage.getItem('cph_plugin_enabled') === 'true';
+
+    if (cphPluginEnabled) {
+        cphTransferButton.textContent = '传送至CPH';
+        cphTransferButton.style.backgroundColor = colors.btnCph; // 紫色背景，区别于洛谷的蓝色
+        cphTransferButton.style.color = 'white';
+        cphTransferButton.style.padding = '8px 16px';
+        cphTransferButton.style.textDecoration = 'none';
+        cphTransferButton.style.border = 'none';
+        cphTransferButton.style.borderRadius = '4px';
+        cphTransferButton.style.fontSize = '14px';
+        cphTransferButton.style.whiteSpace = 'nowrap';
+        cphTransferButton.style.marginRight = '10px';
+        cphTransferButton.style.cursor = 'pointer';
+
+        // 添加点击事件，传输题目数据到CPH
+        cphTransferButton.addEventListener('click', function(e) {
+            e.preventDefault();
+            transferMarkdownProblemToCPH(problemData);
+        });
+    } else {
+        // 如果CPH插件未启用，隐藏按钮
+        cphTransferButton.style.display = 'none';
+    }
+
+    titleContainer.appendChild(titleElement);
+    // 只添加CPH按钮，不添加洛谷链接
+    // 翻译按钮
+    const translateButton = document.createElement('button');
+    translateButton.textContent = '翻译';
+    translateButton.style.backgroundColor = colors.btnTranslate;
+    translateButton.style.color = 'white';
+    translateButton.style.padding = '8px 16px';
+    translateButton.style.textDecoration = 'none';
+    translateButton.style.border = 'none';
+    translateButton.style.borderRadius = '4px';
+    translateButton.style.fontSize = '14px';
+    translateButton.style.whiteSpace = 'nowrap';
+    translateButton.style.marginRight = '10px';
+    translateButton.style.cursor = 'pointer';
+
+    // 保存原始内容和翻译状态的变量
+    let isTranslated = false;
+    let originalContent = {
+        description: problemData.description || '',
+        inputFormat: problemData.inputFormat || '',
+        outputFormat: problemData.outputFormat || '',
+        hint: problemData.hint || ''
+    };
+    let translatedContent = {
+        description: '',
+        inputFormat: '',
+        outputFormat: '',
+        hint: ''
+    };
+
+    translateButton.addEventListener('click', function(e) {
+        e.preventDefault();
+        if (isTranslated) {
+            // 返回原文
+            const renderOptions = {
+                delimiters: [
+                    {left: "$$", right: "$$", display: true},
+                    {left: "$", right: "$", display: false},
+                    {left: "\(", right: "\)", display: false},
+                    {left: "\[", right: "\]", display: true}
+                ],
+                throwOnError: false
+            };
+
+            const fullContentElement = document.getElementById('full-markdown-content');
+
+            if (fullContentElement) {
+                fullContentElement.innerHTML = marked.parse(originalContent.description);
+                renderMathInElement(fullContentElement, renderOptions);
+            }
+
+            translateButton.textContent = '翻译';
+            translateButton.style.backgroundColor = colors.btnTranslate;
+            isTranslated = false;
+
+            if (typeof showMessage === 'function') {
+                showMessage('已返回原文', 'success');
+            }
+        } else {
+            // 翻译
+            translateProblemContent(problemData, translateButton, originalContent, translatedContent, function() {
+                isTranslated = true;
+            });
+        }
+    });
+
+    // 依次添加翻译按钮、CPH 按钮
+    titleContainer.appendChild(translateButton);
+    titleContainer.appendChild(cphTransferButton);
+    scrollContainer.appendChild(titleContainer);
+
+    // 渲染完整的Markdown内容
+    const fullContentSection = document.createElement('div');
+    fullContentSection.style.margin = '20px 0';
+    fullContentSection.style.color = colors.text;
+    fullContentSection.style.lineHeight = '1.6';
+
+    const fullContentDiv = document.createElement('div');
+    fullContentDiv.id = 'full-markdown-content';
+    fullContentDiv.style.color = colors.text;
+    fullContentDiv.style.lineHeight = '1.6';
+
+    fullContentSection.appendChild(fullContentDiv);
+    scrollContainer.appendChild(fullContentSection);
+
+    // 样例（如果存在）
+    if (problemData.samples && Array.isArray(problemData.samples) && problemData.samples.length > 0) {
+        const samplesSection = document.createElement('div');
+        samplesSection.style.margin = '20px 0';
+
+        const samplesHeading = document.createElement('h3');
+        samplesHeading.style.color = colors.headingColor;
+        samplesHeading.textContent = '样例';
+
+        samplesSection.appendChild(samplesHeading);
+
+        problemData.samples.forEach((sample, index) => {
+            const sampleContainer = document.createElement('div');
+            sampleContainer.style.margin = '15px 0';
+            sampleContainer.style.border = '1px solid ' + colors.border;
+            sampleContainer.style.borderRadius = '4px';
+            sampleContainer.style.overflow = 'hidden';
+
+            // 输入部分
+            const inputBlock = document.createElement('div');
+            inputBlock.style.padding = '10px';
+            inputBlock.style.backgroundColor = colors.bgAlt;
+
+            const inputLabel = document.createElement('div');
+            inputLabel.style.color = colors.warnText;
+            inputLabel.style.fontWeight = 'bold';
+            inputLabel.style.marginBottom = '5px';
+            inputLabel.textContent = `输入 #${index + 1}`;
+
+            const inputPre = document.createElement('pre');
+            inputPre.style.background = colors.bg;
+            inputPre.style.padding = '10px';
+            inputPre.style.border = '1px solid ' + colors.border;
+            inputPre.style.color = colors.text;
+            inputPre.style.whiteSpace = 'pre-wrap';
+            inputPre.style.margin = '0';
+            inputPre.style.overflowX = 'auto';
+            inputPre.style.webkitOverflowScrolling = 'touch';
+            inputPre.textContent = sample[0];
+
+            inputBlock.appendChild(inputLabel);
+            inputBlock.appendChild(inputPre);
+
+            // 输出部分
+            const outputBlock = document.createElement('div');
+            outputBlock.style.padding = '10px';
+            outputBlock.style.backgroundColor = colors.bgAlt;
+
+            const outputLabel = document.createElement('div');
+            outputLabel.style.color = colors.warnText;
+            outputLabel.style.fontWeight = 'bold';
+            outputLabel.style.marginBottom = '5px';
+            outputLabel.textContent = `输出 #${index + 1}`;
+
+            const outputPre = document.createElement('pre');
+            outputPre.style.background = colors.bg;
+            outputPre.style.padding = '10px';
+            outputPre.style.border = '1px solid ' + colors.border;
+            outputPre.style.color = colors.text;
+            outputPre.style.whiteSpace = 'pre-wrap';
+            outputPre.style.margin = '0';
+            outputPre.style.overflowX = 'auto';
+            outputPre.style.webkitOverflowScrolling = 'touch';
+            outputPre.textContent = sample[1];
+
+            outputBlock.appendChild(outputLabel);
+            outputBlock.appendChild(outputPre);
+
+            sampleContainer.appendChild(inputBlock);
+            sampleContainer.appendChild(outputBlock);
+            samplesSection.appendChild(sampleContainer);
+        });
+
+        scrollContainer.appendChild(samplesSection);
+    }
+
+    problemDisplay.appendChild(scrollContainer);
+
+    // 在移动设备上，临时隐藏编辑器区域以显示题目详情
+    if (isMobile) {
+        const editorArea = document.getElementById('editor-area');
+        if (editorArea) {
+            editorArea.style.display = 'none';
+        }
+
+        // 添加一个返回编辑器的按钮
+        const backButton = document.createElement('div');
+        backButton.innerHTML = '返回编辑器';
+        backButton.style.position = 'fixed';
+        backButton.style.bottom = '20px';
+        backButton.style.left = '50%';
+        backButton.style.transform = 'translateX(-50%)';
+        backButton.style.backgroundColor = colors.btnPrimary;
+        backButton.style.color = 'white';
+        backButton.style.padding = '12px 24px';
+        backButton.style.borderRadius = '30px';
+        backButton.style.cursor = 'pointer';
+        backButton.style.zIndex = '102';
+        backButton.style.textAlign = 'center';
+        backButton.style.fontSize = '16px';
+        backButton.style.fontWeight = 'bold';
+        backButton.style.boxSizing = 'border-box';
+        backButton.id = 'back-to-editor-btn';
+
+        backButton.addEventListener('click', function() {
+            problemDisplay.style.display = 'none';
+            const editorArea = document.getElementById('editor-area');
+            if (editorArea) {
+                editorArea.style.display = 'flex';
+            }
+
+            // 恢复背景页面滚动
+            document.body.style.overflow = '';
+        });
+
+        problemDisplay.appendChild(backButton);
+
+        // 确保在移动设备上可以滚动
+        document.body.style.overflow = 'hidden';  // 防止背景页面滚动
+    } else {
+        // 在桌面设备上，确保滚动正常
+        document.body.style.overflow = '';
+    }
+
+    // 渲染完整的Markdown和LaTeX内容
+    renderMarkdownAndLatex('full-markdown-content', problemData.description);
+
+    // 添加关闭按钮
+    const closeBtn = document.createElement('div');
+    closeBtn.innerHTML = '×';
+    closeBtn.style.position = 'absolute';
+    closeBtn.style.top = '10px';
+    closeBtn.style.right = '10px';
+    closeBtn.style.cursor = 'pointer';
+    closeBtn.style.fontSize = '24px';
+    closeBtn.style.color = colors.textSecondary;
+    closeBtn.style.zIndex = '101';
+    closeBtn.addEventListener('click', function() {
+        problemDisplay.style.display = 'none';
+
+        // 在移动设备上，关闭题目显示后恢复编辑器显示
+        if (isMobile) {
+            const editorArea = document.getElementById('editor-area');
+            if (editorArea) {
+                editorArea.style.display = 'flex';
+
+                // 检查当前是否为手机模式（通过检查lines-container的显示状态）
+                const linesContainer = document.getElementById('lines-container');
+                if (linesContainer && linesContainer.style.display !== 'none') {
+                    // 当前是手机模式，确保3行预览区域可见
+                    linesContainer.style.display = 'flex';
+
+                    // 隐藏Monaco编辑器（在手机模式下）
+                    const editorContainer = document.getElementById('editor-container');
+                    if (editorContainer) {
+                        editorContainer.style.display = 'none';
+                    }
+                }
+            }
+
+            // 移除返回编辑器按钮
+            const backButton = document.getElementById('back-to-editor-btn');
+            if (backButton && backButton.parentNode === problemDisplay) {
+                backButton.parentNode.removeChild(backButton);
+            }
+
+            // 恢复背景页面滚动
+            document.body.style.overflow = '';
+        } else {
+            // 在桌面设备上，确保滚动正常
+            document.body.style.overflow = '';
+        }
+    });
+
+    problemDisplay.appendChild(closeBtn);
+
+    // 在移动端添加滚动按钮
+    if (isMobile) {
+        // 上移按钮
+        const upBtn = document.createElement('div');
+        upBtn.innerHTML = '↑';
+        upBtn.className = 'up-btn-mobile';
+
+        // 上移按钮点击事件
+        let upBtnInterval;
+        upBtn.addEventListener('mousedown', function() {
+            scrollContainer.scrollTop -= 50;
+            upBtnInterval = setInterval(() => {
+                scrollContainer.scrollTop -= 50;
+            }, 100);
+        });
+
+        upBtn.addEventListener('touchstart', function(e) {
+            e.preventDefault();
+            scrollContainer.scrollTop -= 50;
+            upBtnInterval = setInterval(() => {
+                scrollContainer.scrollTop -= 50;
+            }, 100);
+        });
+
+        upBtn.addEventListener('mouseup', function() {
+            clearInterval(upBtnInterval);
+        });
+
+        upBtn.addEventListener('touchend', function() {
+            clearInterval(upBtnInterval);
+        });
+
+        upBtn.addEventListener('mouseleave', function() {
+            clearInterval(upBtnInterval);
+        });
+
+        problemDisplay.appendChild(upBtn);
+
+        // 下移按钮
+        const downBtn = document.createElement('div');
+        downBtn.innerHTML = '↓';
+        downBtn.className = 'down-btn-mobile';
+
+        // 下移按钮点击事件
+        let downBtnInterval;
+        downBtn.addEventListener('mousedown', function() {
+            scrollContainer.scrollTop += 50;
+            downBtnInterval = setInterval(() => {
+                scrollContainer.scrollTop += 50;
+            }, 100);
+        });
+
+        downBtn.addEventListener('touchstart', function(e) {
+            e.preventDefault();
+            scrollContainer.scrollTop += 50;
+            downBtnInterval = setInterval(() => {
+                scrollContainer.scrollTop += 50;
+            }, 100);
+        });
+
+        downBtn.addEventListener('mouseup', function() {
+            clearInterval(downBtnInterval);
+        });
+
+        downBtn.addEventListener('touchend', function() {
+            clearInterval(downBtnInterval);
+        });
+
+        downBtn.addEventListener('mouseleave', function() {
+            clearInterval(downBtnInterval);
+        });
+
+        problemDisplay.appendChild(downBtn);
+    }
+}
+
+// 传输Markdown题目数据到CPH插件
+async function transferMarkdownProblemToCPH(problemData) {
+    try {
+        // 提取题目编号，优先使用PID，如果没有则从标题中提取
+        let problemId = problemData.pid;
+        if (!problemId || problemId === 'MD') {
+            // 从标题中提取题号（P或B开头的题号）
+            const pidMatch = problemData.title.match(/^[PBUT]\d+/i);
+            problemId = pidMatch ? pidMatch[0].toLowerCase() : 'markdown';
+        } else {
+            problemId = problemId.toLowerCase();
+        }
+
+        // 准备测试用例数据
+        const testCases = [];
+        if (problemData.samples && Array.isArray(problemData.samples) && problemData.samples.length > 0) {
+            problemData.samples.forEach((sample, index) => {
+                testCases.push({
+                    stdin: sample[0],
+                    stdout: sample[1],
+                    name: `样例 ${index + 1}`
+                });
+            });
+        }
+
+        const fileName = `${problemId}.cpp`;
+
+        // 首先确保在编辑器中创建并打开对应的cpp文件
+        await createAndOpenCppFile(fileName);
+
+        // 然后发送消息到CPH插件
+        if (window.cphPlugin) {
+            // 如果当前不是目标文件，切换到目标文件
+            if (window.cphPlugin.currentFile !== fileName) {
+                // 保存当前文件的测试用例
+                if (window.cphPlugin.testCases) {
+                    window.cphPlugin.saveTestCases();
+                }
+
+                // 切换到新文件
+                window.cphPlugin.currentFile = fileName;
+                // 加载新文件的测试用例（如果是新文件则为空）
+                window.cphPlugin.testCases = window.cphPlugin.loadTestCases();
+
+                // 触发文件更改事件，通知编辑器
+                localStorage.setItem('phoi_currentFileName', fileName);
+            }
+
+            // 添加测试用例
+            testCases.forEach(testCase => {
+                // 检查是否已存在相同的测试用例
+                const exists = window.cphPlugin.testCases.some(existingCase =>
+                    existingCase.stdin === testCase.stdin && existingCase.stdout === testCase.stdout
+                );
+
+                if (!exists) {
+                    window.cphPlugin.testCases.push(testCase);
+                }
+            });
+
+            // 保存测试用例
+            window.cphPlugin.saveTestCases();
+
+            // 更新UI
+            window.cphPlugin.renderTestCases();
+            window.cphPlugin.renderTestCasesMain();
+
+            // 安全地调用showMessage函数
+            if (typeof showMessage === 'function') {
+                showMessage(`成功传输 ${testCases.length} 个测试用例到CPH: ${fileName}`, 'success');
+            } else {
+                console.log(`成功传输 ${testCases.length} 个测试用例到CPH: ${fileName}`);
+            }
+        } else {
+            // 如果CPH插件未初始化，抛出异常
+            throw new Error('CPH插件未初始化');
+        }
+    } catch (error) {
+        console.error('传输题目到CPH失败:', error);
+        // 安全地调用showMessage函数
+        if (typeof showMessage === 'function') {
+            showMessage('传输题目到CPH失败: ' + error.message, 'error');
+        } else {
+            console.error('传输题目到CPH失败: ' + error.message);
+        }
+    }
+}
+
+
+// 翻译题目内容
+async function translateProblemContent(problemData, translateButton, originalContent, translatedContent, onTranslateComplete) {
+    const colors = getLuoguThemeColors();
+    const problemDisplay = document.getElementById('problem-display');
+    if (!problemDisplay) return;
+
+    // 获取需要翻译的各部分内容
+    const description = problemData.description || '';
+    const inputFormat = problemData.inputFormat || '';
+    const outputFormat = problemData.outputFormat || '';
+    const hint = problemData.hint || '';
+
+    // 显示正在翻译状态
+    const fullContentElement = document.getElementById('full-markdown-content');
+    const descElement = document.getElementById('problem-description');
+    const inputFormatElement = document.getElementById('problem-input-format');
+    const outputFormatElement = document.getElementById('problem-output-format');
+    const hintElement = document.getElementById('problem-hint');
+
+    if (fullContentElement) fullContentElement.innerHTML = '<em style="color: ' + colors.btnTranslate + ';">正在翻译...</em>';
+    if (descElement) descElement.innerHTML = '<em style="color: ' + colors.btnTranslate + ';">正在翻译...</em>';
+    if (inputFormatElement) inputFormatElement.innerHTML = '<em style="color: ' + colors.btnTranslate + ';">正在翻译...</em>';
+    if (outputFormatElement) outputFormatElement.innerHTML = '<em style="color: ' + colors.btnTranslate + ';">正在翻译...</em>';
+    if (hintElement) hintElement.innerHTML = '<em style="color: ' + colors.btnTranslate + ';">正在翻译...</em>';
+
+    // 更新按钮状态
+    if (translateButton) {
+        translateButton.textContent = '正在翻译...';
+        translateButton.style.backgroundColor = colors.btnDisabled;
+    }
+
+    try {
+        // 分别翻译各部分内容
+        const translatePromises = [];
+
+        // 翻译题目描述
+        if (description) {
+            translatePromises.push(
+                fetch('https://tr.hcz1017.dpdns.org/translate', {
+                    method: 'POST',
+                    headers: {
+                        'accept': '*/*',
+                        'content-type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        from: 'en',
+                        to: 'zh',
+                        text: description
+                    })
+                }).then(res => res.json()).then(data => ({
+                    type: 'description',
+                    text: (data.result || data.translatedText || data.text || '') + '\n\n\n---\n--使用自建机器翻译服务翻译，仅供参考'
+                }))
+            );
+        }
+
+        // 翻译输入格式
+        if (inputFormat) {
+            translatePromises.push(
+                fetch('https://tr.hcz1017.dpdns.org/translate', {
+                    method: 'POST',
+                    headers: {
+                        'accept': '*/*',
+                        'content-type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        from: 'en',
+                        to: 'zh',
+                        text: inputFormat
+                    })
+                }).then(res => res.json()).then(data => ({
+                    type: 'inputFormat',
+                    text: (data.result || data.translatedText || data.text || '') + '\n\n\n---\n--使用自建机器翻译服务翻译，仅供参考'
+                }))
+            );
+        }
+
+        // 翻译输出格式
+        if (outputFormat) {
+            translatePromises.push(
+                fetch('https://tr.hcz1017.dpdns.org/translate', {
+                    method: 'POST',
+                    headers: {
+                        'accept': '*/*',
+                        'content-type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        from: 'en',
+                        to: 'zh',
+                        text: outputFormat
+                    })
+                }).then(res => res.json()).then(data => ({
+                    type: 'outputFormat',
+                    text: (data.result || data.translatedText || data.text || '') + '\n\n\n---\n--使用自建机器翻译服务翻译，仅供参考'
+                }))
+            );
+        }
+
+        // 翻译提示
+        if (hint) {
+            translatePromises.push(
+                fetch('https://tr.hcz1017.dpdns.org/translate', {
+                    method: 'POST',
+                    headers: {
+                        'accept': '*/*',
+                        'content-type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        from: 'en',
+                        to: 'zh',
+                        text: hint
+                    })
+                }).then(res => res.json()).then(data => ({
+                    type: 'hint',
+                    text: (data.result || data.translatedText || data.text || '') + '\n\n\n---\n--使用自建机器翻译服务翻译，仅供参考'
+                }))
+            );
+        }
+
+        // 等待所有翻译完成
+        const results = await Promise.all(translatePromises);
+
+        // 渲染翻译结果
+        const renderOptions = {
+            delimiters: [
+                {left: "$$", right: "$$", display: true},
+                {left: "$", right: "$", display: false},
+                {left: "\\(", right: "\\)", display: false},
+                {left: "\\[", right: "\\]", display: true}
+            ],
+            throwOnError: false
+        };
+
+        results.forEach(item => {
+            let element;
+            let originalText;
+
+            switch(item.type) {
+                case 'description':
+                    element = fullContentElement || descElement;
+                    originalText = description;
+                    if (translatedContent) translatedContent.description = item.text;
+                    break;
+                case 'inputFormat':
+                    element = inputFormatElement;
+                    originalText = inputFormat;
+                    if (translatedContent) translatedContent.inputFormat = item.text;
+                    break;
+                case 'outputFormat':
+                    element = outputFormatElement;
+                    originalText = outputFormat;
+                    if (translatedContent) translatedContent.outputFormat = item.text;
+                    break;
+                case 'hint':
+                    element = hintElement;
+                    originalText = hint;
+                    if (translatedContent) translatedContent.hint = item.text;
+                    break;
+            }
+
+            if (element && item.text) {
+                element.innerHTML = marked.parse(item.text);
+                renderMathInElement(element, renderOptions);
+            }
+        });
+
+        // 更新按钮状态为"返回原文"
+        if (translateButton) {
+            translateButton.textContent = '返回原文';
+            translateButton.style.backgroundColor = colors.btnError;
+        }
+
+        // 调用回调函数通知翻译完成
+        if (onTranslateComplete) {
+            onTranslateComplete();
+        }
+
+        if (typeof showMessage === 'function') {
+            showMessage('翻译完成', 'success');
+        }
+    } catch (error) {
+        console.error('翻译失败:', error);
+        // 恢复原始内容
+        const renderOptions = {
+            delimiters: [
+                {left: "$$", right: "$$", display: true},
+                {left: "$", right: "$", display: false},
+                {left: "\\(", right: "\\)", display: false},
+                {left: "\\[", right: "\\]", display: true}
+            ],
+            throwOnError: false
+        };
+
+        if (fullContentElement) {
+            fullContentElement.innerHTML = marked.parse(description);
+            renderMathInElement(fullContentElement, renderOptions);
+        }
+        if (descElement && !fullContentElement) {
+            descElement.innerHTML = marked.parse(description);
+            renderMathInElement(descElement, renderOptions);
+        }
+        if (inputFormatElement) {
+            inputFormatElement.innerHTML = marked.parse(inputFormat);
+            renderMathInElement(inputFormatElement, renderOptions);
+        }
+        if (outputFormatElement) {
+            outputFormatElement.innerHTML = marked.parse(outputFormat);
+            renderMathInElement(outputFormatElement, renderOptions);
+        }
+        if (hintElement) {
+            hintElement.innerHTML = marked.parse(hint);
+            renderMathInElement(hintElement, renderOptions);
+        }
+
+        // 恢复按钮状态
+        if (translateButton) {
+            translateButton.textContent = '翻译';
+            translateButton.style.backgroundColor = colors.btnTranslate;
+        }
+
+        if (typeof showMessage === 'function') {
+            showMessage('翻译失败：' + error.message, 'error');
+        }
+    }
+}
+
+
+// 初始化洛谷题目功能
+initLuoguFeature();
+
+// 监听窗口大小变化，调整题目显示区域样式
+window.addEventListener('resize', function() {
+    const colors = getLuoguThemeColors();
+    const problemDisplay = document.getElementById('problem-display');
+    if (problemDisplay && problemDisplay.style.display !== 'none') {
+        const keyboardContainer = document.getElementById('keyboard-container');
+        const isMobile = !isFullMode; // 非全屏模式视为移动设备
+
+        if (isMobile) {
+            // 移动设备上的样式
+            problemDisplay.style.position = 'fixed';
+            problemDisplay.style.top = '36px';
+            problemDisplay.style.left = '0';
+            problemDisplay.style.right = '0';
+            problemDisplay.style.bottom = '0';
+            problemDisplay.style.width = 'auto';
+            problemDisplay.style.height = 'auto';
+        } else {
+            // 桌面设备上的样式
+            problemDisplay.style.position = 'fixed';
+            problemDisplay.style.top = '36px';
+            problemDisplay.style.right = '0';
+            problemDisplay.style.width = '400px';
+            problemDisplay.style.height = 'calc(100vh - 36px)';
+            problemDisplay.style.borderLeft = '1px solid ' + colors.border;
+        }
+    }
+});
+
+// 监听localStorage变化，同步插件开关状态
+window.addEventListener('storage', function(e) {
+    if (e.key === 'phoi_luogu_theme_enabled') {
+        const luoguThemeEnabledCheckbox = document.getElementById('luogu-theme-enabled');
+        if (luoguThemeEnabledCheckbox) {
+            luoguThemeEnabledCheckbox.checked = e.newValue === 'true';
+        }
+    }
+});
+
+// 显示消息
+function showMessage(content, sender) {
+    // 创建消息元素
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `debug-message ${sender}`;
+    messageDiv.innerHTML = `<strong>${sender === 'user' ? '用户:' : '系统:'}</strong> ${content}`;
+
+    // 添加到输出面板
+    const terminalInfoContent = document.getElementById('terminal-info-content');
+    if (terminalInfoContent) {
+        terminalInfoContent.appendChild(messageDiv);
+        terminalInfoContent.scrollTop = terminalInfoContent.scrollHeight;
+
+        // 显示终端面板并切换到信息标签页
+            if (window.switchTerminalTab) {
+                window.switchTerminalTab('info');
+            }
+        const terminalPanel = document.getElementById('terminal-panel');
+        if (terminalPanel) {
+            terminalPanel.style.display = 'flex';
+
+            // 3秒后自动隐藏
+            setTimeout(() => {
+                terminalPanel.style.display = 'none';
+            }, 3000);
+        }
+    }
+}

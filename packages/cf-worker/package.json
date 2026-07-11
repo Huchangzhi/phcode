@@ -1,0 +1,20 @@
+{
+  "name": "@phoi/cf-worker",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "build": "tsc --noEmit",
+    "clean": "node -e \"import('fs').then(({rmSync})=>rmSync('dist',{recursive:true,force:true}))\""
+  },
+  "dependencies": {
+    "@phoi/shared": "*"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20240501.0",
+    "typescript": "^5.5.0",
+    "wrangler": "^3.60.0"
+  }
+}

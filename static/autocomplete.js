@@ -211,7 +211,7 @@ const cppFunctions = {
     ],
     // String functions
     'cstring': [
-        'memcpy', 'memset', 'strcpy', 'strncpy', ' strcat', 'strncat',
+        'memcpy', 'memset', 'strcpy', 'strncpy', 'strcat', 'strncat',
         'memcmp', 'strcmp', 'strncmp', 'strlen', 'strchr', 'strstr'
     ],
     // Utility functions

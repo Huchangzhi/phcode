@@ -267,16 +267,7 @@ const pluginCenterPanel = document.getElementById('plugin-center-panel');
 const pluginCenterCloseBtn = document.getElementById('plugin-center-close-btn');
 const pluginCenterContent = document.getElementById('plugin-center-content');
 
-// 初始化虚拟文件系统
-if (typeof window.vfsModule.initVFSModule === 'function') {
-    // 将DOM元素设置为全局变量，以便VFS模块可以访问
-    window.vfsPanel = vfsPanel;
-    window.vfsCloseBtn = vfsCloseBtn;
-    window.vfsContent = vfsContent;
-    window.sidebarToggle = sidebarToggle;
-    
-    window.vfsModule.initVFSModule();
-}
+// VFS init moved to src/main.ts (ES module) — this script no longer re-inits it
 
 const _terminalContentBody = document.querySelector('.terminal-content-body');
 _enableCustomTouchScroll(vfsContent);
@@ -581,8 +572,8 @@ require(['vs/editor/editor.main'], function() {
     // 在初始化 Monaco 之前应用缩放
     applyScale();
 
-    // 初始化主题系统（只设置 CSS 和图片，不更新 Monaco）
-    initTheme();
+    // Theme already initialized by main.ts — CSS, images, Monaco theme handled there
+    // Only fetch the actual theme for editor creation below
 
     // 根据设置确定初始的quickSuggestionsDelay值
     const initialQuickSuggestionsDelay = cppAutocompleteEnabled ? cppAutocompleteDelay : 0;
@@ -623,6 +614,8 @@ require(['vs/editor/editor.main'], function() {
         tabSize: 4,
         insertSpaces: false
     });
+
+    window.monacoEditor = monacoEditor;
 
     // 初始化 Monaco 主题（此时 monacoEditor 已定义）
     const savedTheme = localStorage.getItem(THEME_KEY) || 'dark';
@@ -1002,16 +995,6 @@ function renderThreeLines() {
             if(c) c.scrollIntoView({ behavior: "auto", block: "center", inline: "center" });
         }, 0);
     }
-}
-
-// 转义HTML函数
-function escapeHtml(text) {
-    return text
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
 }
 
 // Editor Logic
@@ -1787,20 +1770,7 @@ if (pluginCenterCloseBtn) {
     });
 }
 
-// AI自动调试插件按钮事件
-document.addEventListener('click', function(event) {
-    if (event.target && event.target.id === 'aidebug-open-btn') {
-        if (pluginCenterPanel) {
-            pluginCenterPanel.style.display = 'none';
-        }
-        if (pluginCenterToggle) {
-            pluginCenterToggle.classList.remove('plugin-center-open');
-        }
-        if (window.aidebugPlugin) {
-            window.aidebugPlugin.showDebugPanel();
-        }
-    }
-});
+// AI自动调试插件已废弃
 
 // 初始化插件设置UI
 function initPluginSettings() {
@@ -1862,6 +1832,8 @@ function initPluginSettings() {
                     tabSize: 4,
                     insertSpaces: false
                 });
+
+                window.monacoEditor = monacoEditor;
 
                 // 恢复光标位置
                 if(currentSelection) {
@@ -3396,91 +3368,6 @@ document.addEventListener('click', function(event) {
     }
 });
 
-
-// 显示本地存储信息
-function showLocalStorageInfo() {
-    // 获取当前主题颜色
-    const isLight = document.documentElement.getAttribute('data-theme') === 'light';
-    const bgColor = isLight ? '#ffffff' : '#252526';
-    const textColor = isLight ? '#333333' : '#cccccc';
-    const titleColor = '#ffffff';
-    const btnPrimaryColor = isLight ? '#0078d4' : '#0e639c';
-
-    // 创建遮罩层
-    const overlay = document.createElement('div');
-    overlay.id = 'local-storage-info-overlay';
-    overlay.style.position = 'fixed';
-    overlay.style.top = '0';
-    overlay.style.left = '0';
-    overlay.style.width = '100%';
-    overlay.style.height = '100%';
-    overlay.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
-    overlay.style.zIndex = '10000';
-    overlay.style.display = 'flex';
-    overlay.style.alignItems = 'center';
-    overlay.style.justifyContent = 'center';
-
-    // 创建弹窗内容
-    const modal = document.createElement('div');
-    modal.id = 'local-storage-info-modal';
-    modal.style.backgroundColor = bgColor;
-    modal.style.padding = '20px';
-    modal.style.borderRadius = '8px';
-    modal.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.5)';
-    modal.style.textAlign = 'left';
-    modal.style.maxWidth = '500px';
-    modal.style.width = '80%';
-    modal.style.color = textColor;
-    modal.style.maxHeight = '80vh';
-    modal.style.overflowY = 'auto';
-
-    // 添加标题
-    const title = document.createElement('h3');
-    title.textContent = '本地文件系统功能说明';
-    title.style.color = titleColor;
-    title.style.marginTop = '0';
-    title.style.marginBottom = '15px';
-    modal.appendChild(title);
-
-    // 添加说明内容
-    const content = document.createElement('div');
-    content.innerHTML = `
-        <p>目前PH code使用的浏览器内置储存用来存储代码，使用该功能可将代码储存到本地，但注意当前版本可能有一些奇怪的问题...</p>
-        <ul style="margin: 15px 0; padding-left: 20px;">
-            <li>本地文件系统功能允许直接访问您的文件系统</li>
-            <li>所有代码将直接保存到您选择的文件夹中</li>
-            <li>功能仍在开发中，可能存在一些不稳定因素</li>
-            <li>如果遇到问题，可以随时切换回虚拟文件系统</li>
-        </ul>
-        <p>启用此功能需要您手动选择一个文件夹进行访问授权。</p>
-    `;
-    modal.appendChild(content);
-
-    // 创建按钮容器
-    const buttonContainer = document.createElement('div');
-    buttonContainer.style.textAlign = 'right';
-    buttonContainer.style.marginTop = '20px';
-
-    // 确定按钮
-    const okButton = document.createElement('button');
-    okButton.textContent = '确定';
-    okButton.style.backgroundColor = btnPrimaryColor;
-    okButton.style.color = 'white';
-    okButton.style.border = 'none';
-    okButton.style.padding = '8px 16px';
-    okButton.style.borderRadius = '4px';
-    okButton.style.cursor = 'pointer';
-    okButton.onclick = function() {
-        document.body.removeChild(overlay);
-    };
-
-    buttonContainer.appendChild(okButton);
-    modal.appendChild(buttonContainer);
-
-    _enableCustomTouchScroll(modal);
-    overlay.appendChild(modal);  // 修复拼写错误
-    document.body.appendChild(overlay);
-}
 
 // 关闭首选项弹窗事件监听器
 if (closePreferences) {

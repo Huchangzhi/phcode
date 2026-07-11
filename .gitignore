@@ -1,38 +1,46 @@
-# AI 训练数据目录（不提交原始样本和中间文件）
+# AI 训练数据目录
 ai_training/
 w64devkit/
 clangd-in-browser/
-# 模型文件（保留，前端需要使用）
-# models/*.json
-# models/*.json.gz
 
 # 依赖
 node_modules/
 
+# 构建产物
+dist/
+build/
+*.spec
+*.tsbuildinfo
+
+# 环境变量
+.env
+.env.*
+
 # 日志
 *.log
+npminstall-debug.log
 
 # 系统文件
 .DS_Store
 Thumbs.db
 aireadme.md
 pushmsg.py
-# pywebview 数据存储目录
+
+# 签名和密钥
 *.keystore
 *.keystore.b64
+
+# 运行时数据
 phcode_data/
 ~/.phcode/
+storage_config.json
 
-# PyInstaller 构建产物
-dist/
-build/
-*.spec
+# 本地调试文件
+test_security.mjs
+webvm/
 
 # Python 缓存
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
-
-# 运行时数据
-storage_config.json

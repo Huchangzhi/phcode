@@ -1,8 +1,11 @@
-# PH code(原名phoi)
+# PH Code v3 — TypeScript 重构版（开发中）
+
+> ⚠️ **此版本正在开发中，功能可能不完整或不稳定。**
+> 稳定版本 (Python 原版) 请访问 [huchangzhi/phoi](https://github.com/huchangzhi/phoi)
 
 > 本项目完全使用AI生成，仅供学习，造成损失作者概不负责
 
-一个适合oi的在线c++编辑器，甚至可以在手机上写代码
+一个跨平台的C++编辑器，甚至在手机上也可以写代码
 
 UI参考：Microsofr VS Code ~~（微软大战代码）~~ ，部分图标来自VScode，CPH
 
