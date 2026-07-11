@@ -36,7 +36,6 @@ jobs:
         $downloadUrl = "https://github.com/skeeto/w64devkit/releases/download/v2.5.0/w64devkit-x64-2.5.0.7z.exe"
         $outputFile = "w64devkit-installer.exe"
         Invoke-WebRequest -Uri $downloadUrl -OutFile $outputFile
-        Write-Host "w64devkit 下载完成"
 
     - name: Extract w64devkit
       run: |
@@ -46,11 +45,8 @@ jobs:
           Remove-Item -Path "w64devkit_extract" -Recurse -Force
         }
         if (-not (Test-Path "w64devkit\bin\g++.exe")) {
-          Write-Error "g++ 编译器未找到"
-          Get-ChildItem -Path "." -Directory | Select-Object Name
           exit 1
         }
-        Write-Host "�?g++ 编译器已准备就绪：w64devkit\bin\g++.exe"
 
     - name: Determine version
       shell: pwsh
@@ -58,8 +54,6 @@ jobs:
       run: |
         if ("${{ inputs.version }}" -ne "") {
           $version = "${{ inputs.version }}"
-        } elseif ("${{ github.event_name }}" -eq "push") {
-          $version = "nightly"
         } else {
           $version = "nightly"
         }
@@ -71,9 +65,7 @@ jobs:
         if ($version.StartsWith("nightly-") -or $version.Contains("beta")) {
           $isPrerelease = "true"
         }
-        Write-Host "version=$version"
         "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
-        Write-Host "isPrerelease=$isPrerelease"
         "isPrerelease=$isPrerelease" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
 
     - name: Delete old nightly release and tag
@@ -83,7 +75,6 @@ jobs:
         $releases = gh api repos/:owner/:repo/releases --jq '.[] | select(.tag_name == "nightly") | .id'
         if ($releases) {
           foreach ($releaseId in $releases) {
-            Write-Host "Deleting release ID: $releaseId"
             gh api --method DELETE repos/:owner/:repo/releases/$releaseId
           }
         }
@@ -91,7 +82,6 @@ jobs:
         if ($tags) {
           git push origin :refs/tags/nightly
           git tag -d nightly
-          Write-Host "Deleted old nightly tag"
         }
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -104,22 +94,12 @@ jobs:
         $content = Get-Content -Path $filePath -Raw -Encoding UTF8
         $content = $content -replace '<p>web版本</p>', "<p>版本号：$version</p>"
         Set-Content -Path $filePath -Value $content -Encoding UTF8 -NoNewline
-        Write-Host "�?已更新版本号为：$version"
 
-    - name: Build shared libraries
+    - name: Build packages
       run: |
         npm -w packages/shared run build
-
-    - name: Build frontend
-      run: |
         npm -w packages/frontend run build
-
-    - name: Build server
-      run: |
         npm -w packages/server run build
-
-    - name: Build desktop
-      run: |
         npm -w packages/desktop run build
 
     - name: Package desktop executable
@@ -144,9 +124,6 @@ jobs:
           [System.IO.File]::WriteAllBytes($certPath, $certBytes)
           $exePath = Resolve-Path "packages\desktop\phcode.exe"
           & "signtool" sign /fd SHA256 /f $certPath /p $certPass /tr http://timestamp.digicert.com /td SHA256 $exePath
-          Write-Host "�?EXE 已签�?
-        } else {
-          Write-Host "跳过签名（未提供证书�?
         }
 
     - name: Create ZIP archive
@@ -161,33 +138,16 @@ jobs:
         New-Item -ItemType Directory -Name "temp_package" -Force
         Copy-Item "packages\desktop\phcode.exe" -Destination "temp_package\"
         Copy-Item "packages\frontend\dist\*" -Recurse -Destination "temp_package\"
+        Copy-Item "templates" -Recurse -Destination "temp_package\"
         Copy-Item "w64devkit" -Recurse -Destination "temp_package\"
         New-Item -ItemType Directory -Name "temp_package\phcode_data" -Force
         Compress-Archive -Path "temp_package\*" -DestinationPath $zipFileName -Force
-        Write-Host "Created ZIP archive: $zipFileName"
-
-    - name: Install NSIS
-      id: nsis
-      uses: negrutiu/nsis-install@v2
-      with:
-        nsis-version: official
 
     - name: Create installer with NSIS
       shell: pwsh
       run: |
         $version = "${{ steps.version.outputs.version }}"
-        Write-Host "正在编译安装程序，版本：$version"
         makensis /INPUTCHARSET UTF8 /DVERSION=$version installer.nsi
-        $installerExe = "phcode-installer-$version.exe"
-        if (Test-Path $installerExe) {
-          Write-Host "�?安装程序创建成功�?installerExe"
-          $installerSize = (Get-Item $installerExe).Length / 1MB
-          Write-Host "安装程序大小�?([math]::Round($installerSize, 2)) MB"
-        } else {
-          Write-Error "安装程序创建失败"
-          Get-ChildItem -Filter "*.exe"
-          exit 1
-        }
 
     - name: Upload artifact
       uses: actions/upload-artifact@v4
@@ -198,11 +158,10 @@ jobs:
           *.exe
           packages/desktop/phcode.exe
 
-    - name: Save version info for Android job
+    - name: Save version info
       run: |
         $version = "${{ steps.version.outputs.version }}"
-        Set-Content -Path "version_info.txt" -Value "$version" -Encoding UTF8
-        Write-Host "Saved version: $version"
+        Set-Content -Path "version_info.txt" -Value "$version" -Encoding UTF8 -NoNewline
 
     - name: Upload version info
       uses: actions/upload-artifact@v4
@@ -218,15 +177,13 @@ jobs:
         $version = "${{ steps.version.outputs.version }}"
         $notes = ""
         if ($version.StartsWith("nightly-")) {
-          $notes = "## PH Code Nightly Build 当前版本为开发中版本，可能包含最新功能但也可能存在未解决的bug"
+          $notes = "## PH Code Nightly Build"
         } elseif ($version -like "*beta*") {
-          $notes = "## PH Code Beta build 当前版本为预览版，可能存在未知的 bug，建议仅在测试环境中使用"
+          $notes = "## PH Code Beta build"
         } else {
           $notes = "## PH Code 稳定版本"
         }
-        Write-Host "notes=$notes"
         "notes=$notes" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
-        Write-Host "Release notes generated"
 
     - name: Create Release
       shell: pwsh
@@ -249,941 +206,186 @@ jobs:
         git config user.email "github-actions[bot]@users.noreply.github.com"
         git tag -f $tagName
         git push -f origin $tagName
-        gh release create $tagName `
-          --title "$releaseName" `
-          --notes "$notes" `
-          --prerelease=$isPrerelease `
-          $zipFile $installerFile
-        Write-Host "�?Release created: $releaseName"
+        gh release create $tagName --title "$releaseName" --notes "$notes" --prerelease=$isPrerelease $zipFile $installerFile
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   build-android:
-    runs-on: ubuntu-latest
     needs: build
-
-    env:
-      JAVA_VERSION: '17'
+    runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
-
-    - name: Download version info
-      uses: actions/download-artifact@v4
-      with:
-        name: version-info
-
-    - name: Get version
-      shell: pwsh
-      id: version
-      run: |
-        $versionRaw = Get-Content -Path "version_info.txt" -Raw -Encoding UTF8
-        $versionRaw = $versionRaw.Trim()
-
-        # 计算 tagName（与 Windows job 保持一致）
-        $tagName = ""
-        if ($versionRaw.StartsWith("nightly-")) {
-          $tagName = "nightly"
-        } else {
-          $tagName = "v$versionRaw"
-        }
-
-        # 计算 versionCode (�?git 提交�?
-        $versionCode = git rev-list --count HEAD
-
-        Write-Host "versionRaw=$versionRaw"
-        Write-Host "tagName=$tagName"
-        Write-Host "versionCode=$versionCode"
-
-        "version=$versionRaw" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
-        "tagName=$tagName" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
-        "versionCode=$versionCode" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
-
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '20'
-
-    - name: Install deps and build frontend
-      run: |
-        npm ci
-        npm -w packages/frontend run build
-
-    - name: Prepare Android assets
-      shell: pwsh
-      run: |
-        # 创建 Android 项目目录
-        New-Item -ItemType Directory -Path "android-app\app\src\main\assets" -Force
-
-        # 准备前端资源（从 Vite 构建产物取）
-        Copy-Item -Recurse "packages\frontend\dist\*" "android-app\app\src\main\assets\" -Force
-
-        # �?/static/ 路径改为相对路径（Android 嵌入式服务器用）
-        Get-ChildItem -Recurse -Filter "*.html" -Path "android-app\app\src\main\assets" | ForEach-Object {
-          $content = Get-Content -Path $_.FullName -Raw -Encoding UTF8
-          $content = $content -replace 'src="/static/', 'src="static/'
-          $content = $content -replace 'href="/static/', 'href="static/'
-          $content = $content -replace '/static/', 'static/'
-          Set-Content -Path $_.FullName -Value $content -Encoding UTF8 -NoNewline
-        }
-
-        # �?/run POST 替换为远�?API
-        Get-ChildItem -Recurse -Filter "*.js" -Path "android-app\app\src\main\assets" | ForEach-Object {
-          $content = Get-Content -Path $_.FullName -Raw -Encoding UTF8
-          $content = $content -replace "fetch\('/run'", "fetch('/api/run'"
-          Set-Content -Path $_.FullName -Value $content -Encoding UTF8 -NoNewline
-        }
-
-        # 写入 assets
-        Set-Content -Path "android-app\app\src\main\assets\assets_version.txt" -Value "${{ steps.version.outputs.version }}" -Encoding UTF8 -NoNewline
-
-    - name: Setup Java
-      uses: actions/setup-java@v4
-      with:
-        distribution: 'temurin'
-        java-version: ${{ env.JAVA_VERSION }}
-
-    - name: Generate Android app files (GeckoView)
-      shell: pwsh
-      run: |
-        # 生成 Android 项目文件
-        $appName = "PH CODE"
-        $appId = "com.hcz.phcode"
-        $minSdk = 26
-        $targetSdk = 36
-        $compileSdk = 36
-        $versionCode = "${{ steps.version.outputs.versionCode }}"
-        $versionName = "${{ steps.version.outputs.version }}"
-
-        # AndroidManifest.xml
-        @"
-        <?xml version="1.0" encoding="utf-8"?>
-        <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-        package="$appId"
-        android:versionCode="$versionCode"
-        android:versionName="$versionName">
-
-        <uses-permission android:name="android.permission.INTERNET" />
-        <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-        <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-        <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-
-        <application
-        android:allowBackup="true"
-        android:hasFragileUserData="true"
-        android:icon="@mipmap/ic_launcher"
-        android:label="$appName"
-        android:roundIcon="@mipmap/ic_launcher_round"
-        android:supportsRtl="true"
-        android:theme="@style/AppTheme"
-        android:usesCleartextTraffic="true">
-
-        <activity
-            android:name=".MainActivity"
-            android:exported="true"
-            android:configChanges="orientation|screenSize|keyboardHidden"
-            android:windowSoftInputMode="adjustResize">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity>
-
-        <service
-            android:name=".ServerService"
-            android:exported="false"
-            android:enabled="true" />
-        </application>
-        </manifest>
-        "@ | Set-Content -Path "android-app\app\src\main\AndroidManifest.xml" -Encoding UTF8
-
-        # 生成应用图标
-        $iconUrl = "https://raw.githubusercontent.com/huchangzhi/phoi/main/packages/frontend/public/static/logo.png"
-        Invoke-WebRequest -Uri $iconUrl -OutFile "logo_download.png" -ErrorAction SilentlyContinue
-        if (-not (Test-Path "logo_download.png")) {
-          Copy-Item "packages\frontend\public\static\logo.png" "logo_download.png" -ErrorAction SilentlyContinue
-        }
-
-        # 创建 mipmap 目录
-        @("mdpi", "hdpi", "xhdpi", "xxhdpi", "xxxhdpi") | ForEach-Object {
-          New-Item -ItemType Directory -Path "android-app\app\src\main\res\mipmap-$_" -Force | Out-Null
-        }
-
-        # 使用 ImageMagick 或简单复制来生成图标
-        Copy-Item "logo_download.png" "android-app\app\src\main\res\mipmap-mdpi\ic_launcher.png" -Force
-        Copy-Item "logo_download.png" "android-app\app\src\main\res\mipmap-hdpi\ic_launcher.png" -Force
-        Copy-Item "logo_download.png" "android-app\app\src\main\res\mipmap-xhdpi\ic_launcher.png" -Force
-        Copy-Item "logo_download.png" "android-app\app\src\main\res\mipmap-xxhdpi\ic_launcher.png" -Force
-        Copy-Item "logo_download.png" "android-app\app\src\main\res\mipmap-xxxhdpi\ic_launcher.png" -Force
-
-        # MainActivity.java
-        @"
-        package $appId;
-
-        import android.os.Bundle;
-        import android.view.View;
-        import android.webkit.WebChromeClient;
-        import android.webkit.WebSettings;
-        import android.webkit.WebView;
-        import android.webkit.WebViewClient;
-        import androidx.appcompat.app.AppCompatActivity;
-
-        public class MainActivity extends AppCompatActivity {
-        private WebView webView;
-
-        @Override
-        protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-
-        webView = new WebView(this);
-        setContentView(webView);
-
-        WebSettings settings = webView.getSettings();
-        settings.setJavaScriptEnabled(true);
-        settings.setDomStorageEnabled(true);
-        settings.setAllowFileAccess(true);
-        settings.setAllowContentAccess(true);
-
-        // 启动内嵌服务�?
-        ServerService.startServer(this);
-
-        // 加载本地页面
-        webView.loadUrl("http://127.0.0.1:27120/index.html");
-        }
-
-        @Override
-        public void onBackPressed() {
-        if (webView.canGoBack()) {
-            webView.goBack();
-        } else {
-            super.onBackPressed();
-        }
-        }
-        }
-        "@ | Set-Content -Path "android-app\app\src\main\java\$($appId -replace '\.', '\')\MainActivity.java" -Encoding UTF8
-
-        # ServerService.java
-        @"
-        package $appId;
-
-        import android.app.Notification;
-        import android.app.NotificationChannel;
-        import android.app.NotificationManager;
-        import android.app.Service;
-        import android.content.Context;
-        import android.content.Intent;
-        import android.os.Build;
-        import android.os.IBinder;
-        import androidx.core.app.NotificationCompat;
-
-        import java.io.IOException;
-        import java.io.InputStream;
-
-        import fi.iki.elonen.NanoHTTPD;
-
-        public class ServerService extends Service {
-        private static Server server;
-        private static final int NOTIFICATION_ID = 1;
-        private static final String CHANNEL_ID = "server_service_channel";
-
-        public static void startServer(Context context) {
-        if (server == null) {
-            server = new Server(context, 27120);
-        }
-        try {
-            if (!server.isAlive()) {
-                server.start();
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        }
-
-        @Override
-        public void onCreate() {
-        super.onCreate();
-        createNotificationChannel();
-        startForeground(NOTIFICATION_ID, buildNotification());
-        startServer(this);
-        }
-
-        @Override
-        public int onStartCommand(Intent intent, int flags, int startId) {
-        return START_STICKY;
-        }
-
-        @Override
-        public IBinder onBind(Intent intent) {
-        return null;
-        }
-
-        private void createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            NotificationChannel channel = new NotificationChannel(
-                CHANNEL_ID, getString(R.string.app_name), NotificationManager.IMPORTANCE_LOW
-            );
-            NotificationManager manager = getSystemService(NotificationManager.class);
-            manager.createNotificationChannel(channel);
-        }
-        }
-
-        private Notification buildNotification() {
-        return new NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle(getString(R.string.app_name))
-            .setContentText("Server is running")
-            .setSmallIcon(android.R.drawable.ic_menu_manage)
-            .build();
-        }
-
-        private static class Server extends NanoHTTPD {
-        private final Context context;
-
-        public Server(Context context, int port) {
-            super(port);
-            this.context = context;
-        }
-
-        @Override
-        public Response serve(IHTTPSession session) {
-            String uri = session.getUri();
-            if (uri == null || uri.equals("/")) uri = "index.html";
-            if (uri.startsWith("/")) uri = uri.substring(1);
-
-            try {
-                InputStream inputStream = context.getAssets().open(uri);
-                byte[] data = new byte[inputStream.available()];
-                inputStream.read(data);
-                inputStream.close();
-                String mimeType = getMimeTypeForFile(uri);
-                return newFixedLengthResponse(Response.Status.OK, mimeType, data);
-            } catch (IOException e) {
-                return newFixedLengthResponse(Response.Status.NOT_FOUND, "text/plain", "Not Found");
-            }
-        }
-        }
-        }
-        "@ | Set-Content -Path "android-app\app\src\main\java\$($appId -replace '\.', '\')\ServerService.java" -Encoding UTF8
-
-        # strings.xml
-        New-Item -ItemType Directory -Path "android-app\app\src\main\res\values" -Force | Out-Null
-        @"
-        <?xml version="1.0" encoding="utf-8"?>
-        <resources>
-        <string name="app_name">$appName</string>
-        </resources>
-        "@ | Set-Content -Path "android-app\app\src\main\res\values\strings.xml" -Encoding UTF8
-
-        # themes.xml
-        @"
-        <?xml version="1.0" encoding="utf-8"?>
-        <resources>
-        <style name="AppTheme" parent="Theme.AppCompat.Light.NoActionBar">
-        <item name="android:windowFullscreen">true</item>
-        </style>
-        </resources>
-        "@ | Set-Content -Path "android-app\app\src\main\res\values\themes.xml" -Encoding UTF8
-
-        # build.gradle (app)
-        @"
-        plugins {
-        id 'com.android.application'
-        }
-
-        android {
-        namespace '$appId'
-        compileSdk $compileSdk
-
-        defaultConfig {
-        applicationId '$appId'
-        minSdk $minSdk
-        targetSdk $targetSdk
-        versionCode $versionCode
-        versionName '$versionName'
-        }
-
-        buildTypes {
-        release {
-            minifyEnabled false
-        }
-        }
-
-        splits {
-        abi {
-            enable true
-            reset()
-            include 'arm64-v8a', 'armeabi-v7a', 'x86_64'
-            universalApk false
-        }
-        }
-
-        compileOptions {
-        sourceCompatibility JavaVersion.VERSION_17
-        targetCompatibility JavaVersion.VERSION_17
-        }
-        }
-
-        dependencies {
-        implementation 'org.nanohttpd:nanohttpd:2.3.1'
-        implementation 'androidx.appcompat:appcompat:1.6.1'
-        }
-        "@ | Set-Content -Path "android-app\app\build.gradle" -Encoding UTF8
-
-        # settings.gradle
-        @"
-        pluginManagement {
-        repositories {
-        google()
-        mavenCentral()
-        gradlePluginPortal()
-        }
-        }
-        dependencyResolutionManagement {
-        repositories {
-        google()
-        mavenCentral()
-        }
-        }
-
-        rootProject.name = 'PHCode'
-        include ':app'
-        "@ | Set-Content -Path "android-app\settings.gradle" -Encoding UTF8
-
-        # gradle.properties
-        @"
-        org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8
-        android.useAndroidX=true
-        "@ | Set-Content -Path "android-app\gradle.properties" -Encoding UTF8
-
-    - name: Create Gradle Wrapper
-      shell: pwsh
-      working-directory: android-app
-      run: |
-        $gradleVersion = "9.5.1"
-        $wrapperUrl = "https://services.gradle.org/distributions/gradle-$gradleVersion-bin.zip"
-        Invoke-WebRequest -Uri $wrapperUrl -OutFile "gradle-wrapper.zip" -ErrorAction SilentlyContinue
-        if (Test-Path "gradle-wrapper.zip") {
-          Expand-Archive -Path "gradle-wrapper.zip" -DestinationPath "gradle-dist" -Force
-          $gradleBin = "gradle-dist/gradle-$gradleVersion/bin/gradle"
-          & $gradleBin wrapper --gradle-version $gradleVersion
-          Remove-Item -Recurse -Force "gradle-dist" -ErrorAction SilentlyContinue
-          Remove-Item "gradle-wrapper.zip" -Force -ErrorAction SilentlyContinue
-        } else {
-          New-Item -ItemType Directory -Path "gradle\wrapper" -Force
-          @"
-        distributionBase=GRADLE_USER_HOME
-        distributionPath=wrapper/dists
-        distributionUrl=https\://services.gradle.org/distributions/gradle-9.5.1-bin.zip
-        networkTimeout=10000
-        validateDistributionUrl=true
-        zipStoreBase=GRADLE_USER_HOME
-        zipStorePath=wrapper/dists
-        "@ | Set-Content -Path "gradle\wrapper\gradle-wrapper.properties"
-        }
-
-    - name: Decode keystore
-      shell: pwsh
-      run: |
-        $keystoreB64 = "${{ secrets.ANDROID_KEYSTORE }}"
-        if ($keystoreB64) {
-          $keystoreBytes = [Convert]::FromBase64String($keystoreB64)
-          [System.IO.File]::WriteAllBytes("phcode.keystore", $keystoreBytes)
-          Write-Host "Keystore decoded successfully"
-
-          # 注入签名配置�?build.gradle
-          $signingConfig = @"
-
-        android {
-        signingConfigs {
-        release {
-            storeFile file('../../phcode.keystore')
-            storePassword '${{ secrets.KEYSTORE_PASSWORD }}'
-            keyAlias '${{ secrets.KEY_ALIAS }}'
-            keyPassword '${{ secrets.KEY_PASSWORD }}'
-        }
-        }
-        buildTypes {
-        release {
-            signingConfig signingConfigs.release
-        }
-        }
-        }
-        "@
-          Add-Content -Path "android-app\app\build.gradle" -Value $signingConfig -Encoding UTF8
-          Write-Host "Signing config injected"
-        } else {
-          Write-Host "No keystore found, building without signing"
-        }
-
-    - name: Build APK
-      shell: pwsh
-      working-directory: android-app
-      run: |
-        # �?gradlew 执行权限
-        if (Test-Path "gradlew") {
-          & chmod +x gradlew
-          & ./gradlew assembleRelease --no-daemon
-        } else {
-          Write-Error "gradlew not found"
-          Get-ChildItem -Path "." -Recurse -Depth 2 | Select-Object Name
-          exit 1
-        }
-
-    - name: Find APKs
-      shell: pwsh
-      run: |
-        $apkFiles = Get-ChildItem -Recurse -Filter "*.apk" -Path "android-app"
-        if ($apkFiles.Count -eq 0) {
-          Write-Error "未找�?APK 文件"
-          Get-ChildItem -Path "android-app" -Recurse -Depth 5 | Select-Object FullName
-          exit 1
-        }
-        $apkFiles | ForEach-Object {
-          Write-Host "Found APK: $($_.FullName)"
-        }
-
-    - name: Upload APK artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: PHCODE-android
-        path: android-app/**/*.apk
-
-    - name: Upload APKs to Release
-      shell: pwsh
-      run: |
-        $tagName = "${{ steps.version.outputs.tagName }}"
-        if (-not $tagName) {
-          Write-Host "No tag name, skipping release upload"
-          exit 0
-        }
-        $apkFiles = Get-ChildItem -Recurse -Filter "*.apk" -Path "android-app"
-        $uploadArgs = @("release", "upload", $tagName)
-        foreach ($apk in $apkFiles) {
-          $uploadArgs += $apk.FullName
-        }
-        & gh $uploadArgs
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: version-info
+
+      - name: Get version
+        id: get_version
+        run: |
+          VERSION=$(cat version_info.txt | tr -d '\n\r' | xargs)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          if [[ "$VERSION" == nightly-* ]]; then
+            TAG_NAME="nightly"
+          else
+            TAG_NAME="v$VERSION"
+          fi
+          echo "tagName=$TAG_NAME" >> $GITHUB_OUTPUT
+          VC=$(git rev-list --count HEAD)
+          echo "versionCode=$VC" >> $GITHUB_OUTPUT
+
+      - name: Prepare assets
+        run: |
+          npm ci
+          npm -w packages/shared run build
+          npm -w packages/frontend run build
+          mkdir -p packages/android-app/app/src/main/assets
+          cp -r packages/frontend/dist/* packages/android-app/app/src/main/assets/
+          find packages/android-app/app/src/main/assets -name "*.html" -exec sed -i 's|src="/static/|src="static/|g; s|href="/static/|href="static/|g' {} \;
+          find packages/android-app/app/src/main/assets -name "*.js" -exec sed -i "s|'/static/|'static/|g; s|\"/static/|\"static/|g; s|\`/static/|\`static/|g" {} \;
+          find packages/android-app/app/src/main/assets -name "*.js" -exec sed -i "s|fetch('/static/|fetch('static/|g; s|fetch(\"/static/|fetch(\"static/|g" {} \;
+          echo '${{ steps.get_version.outputs.version }}' > packages/android-app/app/src/main/assets/assets_version.txt
+
+      - name: Inject version into build.gradle
+        run: |
+          VERSION="${{ steps.get_version.outputs.version }}"
+          VC="${{ steps.get_version.outputs.versionCode }}"
+          sed -i "s/versionCode 1/versionCode $VC/" packages/android-app/app/build.gradle
+          sed -i "s/versionName \"1.0.0\"/versionName \"$VERSION\"/" packages/android-app/app/build.gradle
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Create Gradle Wrapper
+        run: |
+          cd packages/android-app
+          curl -L -o gradle/wrapper/gradle-wrapper.jar \
+            "https://raw.githubusercontent.com/gradle/gradle/v9.5.1/gradle/wrapper/gradle-wrapper.jar"
+          curl -L -o gradlew \
+            "https://raw.githubusercontent.com/gradle/gradle/v9.5.1/gradlew"
+          chmod +x gradlew
+
+      - name: Decode keystore
+        env:
+          ANDROID_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE }}
+        run: |
+          if [ -n "$ANDROID_KEYSTORE" ]; then
+            echo "$ANDROID_KEYSTORE" | tr -d '\n\r ' | base64 -d > packages/android-app/app/phcode.keystore
+          fi
+
+      - name: Build APK
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          cd packages/android-app
+          ./gradlew assembleRelease --no-daemon
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: PHCODE-android
+          path: packages/android-app/app/build/outputs/apk/release/*.apk
+
+      - name: Upload APK to Release
+        run: |
+          tagName="${{ steps.get_version.outputs.tagName }}"
+          for apk in packages/android-app/app/build/outputs/apk/release/*.apk; do
+            apk_name="PHCODE-$(basename "$apk")"
+            cp "$apk" "$apk_name"
+            gh release delete-asset "$tagName" "$apk_name" --yes 2>/dev/null || true
+            gh release upload "$tagName" "$apk_name"
+          done
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   build-android-lite:
-    runs-on: ubuntu-latest
     needs: build
-
-    env:
-      JAVA_VERSION: '17'
+    runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-    - name: Download version info
-      uses: actions/download-artifact@v4
-      with:
-        name: version-info
+      - uses: actions/download-artifact@v4
+        with:
+          name: version-info
 
-    - name: Get version
-      shell: pwsh
-      id: version
-      run: |
-        $versionRaw = Get-Content -Path "version_info.txt" -Raw -Encoding UTF8
-        $versionRaw = $versionRaw.Trim()
+      - name: Get version
+        id: get_version
+        run: |
+          VERSION=$(cat version_info.txt | tr -d '\n\r' | xargs)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          if [[ "$VERSION" == nightly-* ]]; then
+            TAG_NAME="nightly"
+          else
+            TAG_NAME="v$VERSION"
+          fi
+          echo "tagName=$TAG_NAME" >> $GITHUB_OUTPUT
+          VC=$(git rev-list --count HEAD)
+          echo "versionCode=$VC" >> $GITHUB_OUTPUT
 
-        $tagName = ""
-        if ($versionRaw.StartsWith("nightly-")) {
-          $tagName = "nightly"
-        } else {
-          $tagName = "v$versionRaw"
-        }
+      - name: Prepare assets
+        run: |
+          npm ci
+          npm -w packages/shared run build
+          npm -w packages/frontend run build
+          mkdir -p packages/android-lite/app/src/main/assets
+          cp -r packages/frontend/dist/* packages/android-lite/app/src/main/assets/
+          find packages/android-lite/app/src/main/assets -name "*.html" -exec sed -i 's|src="/static/|src="static/|g; s|href="/static/|href="static/|g' {} \;
+          find packages/android-lite/app/src/main/assets -name "*.js" -exec sed -i "s|'/static/|'static/|g; s|\"/static/|\"static/|g; s|\`/static/|\`static/|g" {} \;
+          find packages/android-lite/app/src/main/assets -name "*.js" -exec sed -i "s|fetch('/static/|fetch('static/|g; s|fetch(\"/static/|fetch(\"static/|g" {} \;
+          echo '${{ steps.get_version.outputs.version }}' > packages/android-lite/app/src/main/assets/assets_version.txt
 
-        $versionCode = git rev-list --count HEAD
+      - name: Inject version into build.gradle
+        run: |
+          VERSION="${{ steps.get_version.outputs.version }}"
+          VC="${{ steps.get_version.outputs.versionCode }}"
+          sed -i "s/versionCode 1/versionCode $VC/" packages/android-lite/app/build.gradle
+          sed -i "s/versionName \"1.0.0\"/versionName \"$VERSION\"/" packages/android-lite/app/build.gradle
 
-        "version=$versionRaw" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
-        "tagName=$tagName" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
-        "versionCode=$versionCode" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
 
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '20'
+      - name: Create Gradle Wrapper
+        run: |
+          cd packages/android-lite
+          curl -L -o gradle/wrapper/gradle-wrapper.jar \
+            "https://raw.githubusercontent.com/gradle/gradle/v8.2.0/gradle/wrapper/gradle-wrapper.jar"
+          curl -L -o gradlew \
+            "https://raw.githubusercontent.com/gradle/gradle/v8.2.0/gradlew"
+          chmod +x gradlew
 
-    - name: Install deps and build frontend
-      run: |
-        npm ci
-        npm -w packages/frontend run build
+      - name: Build APK
+        run: |
+          cd packages/android-lite
+          ./gradlew assembleRelease --no-daemon
 
-    - name: Prepare Android assets
-      shell: pwsh
-      run: |
-        New-Item -ItemType Directory -Path "android-lite\app\src\main\assets" -Force
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: PHCODE-android-lite
+          path: packages/android-lite/app/build/outputs/apk/release/*.apk
 
-        # 准备前端资源（从 Vite 构建产物取）
-        Copy-Item -Recurse "packages\frontend\dist\*" "android-lite\app\src\main\assets\" -Force
-
-        # �?/static/ 路径改为相对路径
-        Get-ChildItem -Recurse -Filter "*.html" -Path "android-lite\app\src\main\assets" | ForEach-Object {
-          $content = Get-Content -Path $_.FullName -Raw -Encoding UTF8
-          $content = $content -replace 'src="/static/', 'src="static/'
-          $content = $content -replace 'href="/static/', 'href="static/'
-          $content = $content -replace '/static/', 'static/'
-          Set-Content -Path $_.FullName -Value $content -Encoding UTF8 -NoNewline
-        }
-
-        Get-ChildItem -Recurse -Filter "*.js" -Path "android-lite\app\src\main\assets" | ForEach-Object {
-          $content = Get-Content -Path $_.FullName -Raw -Encoding UTF8
-          $content = $content -replace "fetch\('/run'", "fetch('/api/run'"
-          Set-Content -Path $_.FullName -Value $content -Encoding UTF8 -NoNewline
-        }
-
-        # 写入版本信息
-        Set-Content -Path "android-lite\app\src\main\assets\assets_version.txt" -Value "${{ steps.version.outputs.version }}" -Encoding UTF8 -NoNewline
-
-    - name: Setup Java
-      uses: actions/setup-java@v4
-      with:
-        distribution: 'temurin'
-        java-version: ${{ env.JAVA_VERSION }}
-
-    - name: Generate Android Lite project files
-      shell: pwsh
-      run: |
-        $appName = "PH CODE Lite"
-        $appId = "com.hcz.phcode.lite"
-        $minSdk = 21
-        $targetSdk = 34
-        $compileSdk = 34
-        $versionCode = "${{ steps.version.outputs.versionCode }}"
-        $versionName = "${{ steps.version.outputs.version }}"
-
-        # AndroidManifest.xml
-        @"
-        <?xml version="1.0" encoding="utf-8"?>
-        <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-        package="$appId"
-        android:versionCode="$versionCode"
-        android:versionName="$versionName">
-
-        <uses-permission android:name="android.permission.INTERNET" />
-
-        <application
-        android:allowBackup="true"
-        android:icon="@mipmap/ic_launcher"
-        android:label="$appName"
-        android:roundIcon="@mipmap/ic_launcher_round"
-        android:supportsRtl="true"
-        android:theme="@style/AppTheme"
-        android:usesCleartextTraffic="true">
-
-        <activity
-            android:name=".MainActivity"
-            android:exported="true"
-            android:configChanges="orientation|screenSize|keyboardHidden"
-            android:windowSoftInputMode="adjustResize">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity>
-        </application>
-        </manifest>
-        "@ | Set-Content -Path "android-lite\app\src\main\AndroidManifest.xml" -Encoding UTF8
-
-        # MainActivity.java (Lite version - uses WebViewAssetLoader)
-        $mainActivity = @'
-        package com.hcz.phcode.lite;
-
-        import android.graphics.Bitmap;
-        import android.os.Bundle;
-        import android.view.View;
-        import android.webkit.WebChromeClient;
-        import android.webkit.WebResourceRequest;
-        import android.webkit.WebSettings;
-        import android.webkit.WebView;
-        import android.webkit.WebViewClient;
-        import androidx.appcompat.app.AppCompatActivity;
-        import androidx.webkit.WebViewAssetLoader;
-
-        public class MainActivity extends AppCompatActivity {
-        private WebView webView;
-
-        @Override
-        protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-
-        webView = new WebView(this);
-        setContentView(webView);
-
-        final WebViewAssetLoader assetLoader = new WebViewAssetLoader.Builder()
-            .addPathHandler("/static/", new WebViewAssetLoader.AssetsPathHandler(this))
-            .addPathHandler("/", new WebViewAssetLoader.AssetsPathHandler(this))
-            .build();
-
-        WebSettings settings = webView.getSettings();
-        settings.setJavaScriptEnabled(true);
-        settings.setDomStorageEnabled(true);
-        settings.setAllowFileAccess(true);
-        settings.setAllowContentAccess(true);
-        settings.setAllowFileAccessFromFileURLs(true);
-        settings.setAllowUniversalAccessFromFileURLs(true);
-
-        webView.setWebViewClient(new WebViewClient() {
-            @Override
-            public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
-                return false;
-            }
-
-            @Override
-            public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
-                return assetLoader.shouldInterceptRequest(request.getUrl());
-            }
-        });
-
-        webView.loadUrl("https://appassets.androidplatform.net/index.html");
-        }
-
-        @Override
-        public void onBackPressed() {
-        if (webView.canGoBack()) {
-            webView.goBack();
-        } else {
-            super.onBackPressed();
-        }
-        }
-        }
-        '@
-        $pkgDir = $appId -replace '\.', '\'
-        $mainActivityPath = "android-lite\app\src\main\java\$pkgDir\MainActivity.java"
-        New-Item -ItemType Directory -Path (Split-Path $mainActivityPath -Parent) -Force | Out-Null
-        Set-Content -Path $mainActivityPath -Value $mainActivity -Encoding UTF8
-
-        # build.gradle
-        @"
-        plugins {
-        id 'com.android.application'
-        }
-
-        android {
-        namespace '$appId'
-        compileSdk $compileSdk
-
-        defaultConfig {
-        applicationId '$appId'
-        minSdk $minSdk
-        targetSdk $targetSdk
-        versionCode $versionCode
-        versionName '$versionName'
-        }
-
-        buildTypes {
-        release {
-            minifyEnabled false
-        }
-        }
-
-        compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
-        }
-        }
-
-        dependencies {
-        implementation 'androidx.appcompat:appcompat:1.6.1'
-        implementation 'androidx.webkit:webkit:1.8.0'
-        }
-        "@ | Set-Content -Path "android-lite\app\build.gradle" -Encoding UTF8
-
-        # settings.gradle
-        @"
-        pluginManagement {
-        repositories {
-        google()
-        mavenCentral()
-        gradlePluginPortal()
-        }
-        }
-        dependencyResolutionManagement {
-        repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
-        repositories {
-        google()
-        mavenCentral()
-        }
-        }
-
-        rootProject.name = 'PHCodeLite'
-        include ':app'
-        "@ | Set-Content -Path "android-lite\settings.gradle" -Encoding UTF8
-
-        # gradle.properties
-        @"
-        org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8
-        android.useAndroidX=true
-        "@ | Set-Content -Path "android-lite\gradle.properties" -Encoding UTF8
-
-        # 图标和资源文�?
-        @("mdpi", "hdpi", "xhdpi", "xxhdpi", "xxxhdpi") | ForEach-Object {
-          New-Item -ItemType Directory -Path "android-lite\app\src\main\res\mipmap-$_" -Force | Out-Null
-        }
-        if (Test-Path "packages\frontend\public\static\logo.png") {
-          Copy-Item "packages\frontend\public\static\logo.png" "android-lite\app\src\main\res\mipmap-mdpi\ic_launcher.png" -Force
-          Copy-Item "packages\frontend\public\static\logo.png" "android-lite\app\src\main\res\mipmap-hdpi\ic_launcher.png" -Force
-          Copy-Item "packages\frontend\public\static\logo.png" "android-lite\app\src\main\res\mipmap-xhdpi\ic_launcher.png" -Force
-          Copy-Item "packages\frontend\public\static\logo.png" "android-lite\app\src\main\res\mipmap-xxhdpi\ic_launcher.png" -Force
-          Copy-Item "packages\frontend\public\static\logo.png" "android-lite\app\src\main\res\mipmap-xxxhdpi\ic_launcher.png" -Force
-        }
-
-        # strings.xml
-        New-Item -ItemType Directory -Path "android-lite\app\src\main\res\values" -Force | Out-Null
-        @"
-        <?xml version="1.0" encoding="utf-8"?>
-        <resources>
-        <string name="app_name">$appName</string>
-        </resources>
-        "@ | Set-Content -Path "android-lite\app\src\main\res\values\strings.xml" -Encoding UTF8
-
-        # themes.xml
-        @"
-        <?xml version="1.0" encoding="utf-8"?>
-        <resources>
-        <style name="AppTheme" parent="Theme.AppCompat.Light.NoActionBar">
-        <item name="android:windowFullscreen">true</item>
-        </style>
-        </resources>
-        "@ | Set-Content -Path "android-lite\app\src\main\res\values\themes.xml" -Encoding UTF8
-
-    - name: Create Gradle Wrapper
-      shell: pwsh
-      working-directory: android-lite
-      run: |
-        $gradleVersion = "8.2"
-        $wrapperUrl = "https://services.gradle.org/distributions/gradle-$gradleVersion-bin.zip"
-        Invoke-WebRequest -Uri $wrapperUrl -OutFile "gradle-wrapper.zip" -ErrorAction SilentlyContinue
-        if (Test-Path "gradle-wrapper.zip") {
-          Expand-Archive -Path "gradle-wrapper.zip" -DestinationPath "gradle-dist" -Force
-          $gradleBin = "gradle-dist/gradle-$gradleVersion/bin/gradle"
-          & $gradleBin wrapper --gradle-version $gradleVersion
-          Remove-Item -Recurse -Force "gradle-dist" -ErrorAction SilentlyContinue
-          Remove-Item "gradle-wrapper.zip" -Force -ErrorAction SilentlyContinue
-        } else {
-          New-Item -ItemType Directory -Path "gradle\wrapper" -Force
-          @"
-        distributionBase=GRADLE_USER_HOME
-        distributionPath=wrapper/dists
-        distributionUrl=https\://services.gradle.org/distributions/gradle-8.2-bin.zip
-        networkTimeout=10000
-        validateDistributionUrl=true
-        zipStoreBase=GRADLE_USER_HOME
-        zipStorePath=wrapper/dists
-        "@ | Set-Content -Path "gradle\wrapper\gradle-wrapper.properties"
-        }
-
-    - name: Decode keystore
-      shell: pwsh
-      run: |
-        $keystoreB64 = "${{ secrets.ANDROID_KEYSTORE }}"
-        if ($keystoreB64) {
-          $keystoreBytes = [Convert]::FromBase64String($keystoreB64)
-          [System.IO.File]::WriteAllBytes("phcode.keystore", $keystoreBytes)
-          $signingConfig = @"
-
-        android {
-        signingConfigs {
-        release {
-            storeFile file('../../phcode.keystore')
-            storePassword '${{ secrets.KEYSTORE_PASSWORD }}'
-            keyAlias '${{ secrets.KEY_ALIAS }}'
-            keyPassword '${{ secrets.KEY_PASSWORD }}'
-        }
-        }
-        buildTypes {
-        release {
-            signingConfig signingConfigs.release
-        }
-        }
-        }
-        "@
-          Add-Content -Path "android-lite\app\build.gradle" -Value $signingConfig -Encoding UTF8
-        } else {
-          Write-Host "No keystore found, building without signing"
-        }
-
-    - name: Build Lite APK
-      shell: pwsh
-      working-directory: android-lite
-      run: |
-        if (Test-Path "gradlew") {
-          & chmod +x gradlew
-          & ./gradlew assembleRelease --no-daemon
-        } else {
-          Write-Error "gradlew not found"
-          exit 1
-        }
-
-    - name: Find Lite APK
-      shell: pwsh
-      run: |
-        $apkFiles = Get-ChildItem -Recurse -Filter "*.apk" -Path "android-lite"
-        if ($apkFiles.Count -eq 0) {
-          Write-Error "未找�?Lite APK 文件"
-          exit 1
-        }
-        $apkFiles | ForEach-Object {
-          Write-Host "Found APK: $($_.FullName)"
-        }
-
-    - name: Upload Lite APK artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: PHCODE-android-lite
-        path: android-lite/**/*.apk
-
-    - name: Upload Lite APK to Release
-      shell: pwsh
-      run: |
-        $tagName = "${{ steps.version.outputs.tagName }}"
-        if (-not $tagName) {
-          exit 0
-        }
-        $apkFiles = Get-ChildItem -Recurse -Filter "*.apk" -Path "android-lite"
-        $uploadArgs = @("release", "upload", $tagName)
-        foreach ($apk in $apkFiles) {
-          $uploadArgs += $apk.FullName
-        }
-        & gh $uploadArgs
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  deploy-cf-worker:
-    runs-on: ubuntu-latest
-    needs: build
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
-
-    env:
-      NODE_VERSION: '22'
-
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
-
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: ${{ env.NODE_VERSION }}
-
-    - name: Install dependencies
-      run: npm ci
-
-    - name: Build shared libraries
-      run: npm -w packages/shared run build
-
-    - name: Build frontend
-      run: npm -w packages/frontend run build
-
-    - name: Deploy to Cloudflare Workers
-      run: npm -w packages/cf-worker run deploy
-      env:
-        CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      - name: Upload APK to Release
+        run: |
+          tagName="${{ steps.get_version.outputs.tagName }}"
+          for apk in packages/android-lite/app/build/outputs/apk/release/*.apk; do
+            apk_name="PHCODE-android-lite.apk"
+            cp "$apk" "$apk_name"
+            gh release delete-asset "$tagName" "$apk_name" --yes 2>/dev/null || true
+            gh release upload "$tagName" "$apk_name"
+          done
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
