@@ -107,11 +107,8 @@ jobs:
       run: |
         npm run package -- --target node22-win-x64
 
-    - name: Set icon
-      working-directory: packages/desktop
-      run: |
-        Invoke-WebRequest -Uri "https://github.com/electron/rcedit/releases/download/v2.0.0/rcedit-x64.exe" -OutFile "rcedit.exe"
-        .\rcedit.exe phcode.exe --set-icon ../frontend/public/static/logo.ico
+    # ponytail: rcedit 在 pkg 打包后修改 PE 会破坏快照偏移，所以跳过图标注入
+    #           如需自定义图标，需在 pkg 打包前修改 Node.js 基础二进制
 
     - name: Sign desktop executable
       shell: pwsh
