@@ -107,8 +107,10 @@ jobs:
       run: |
         npm run package -- --target node22-win-x64
 
-    # ponytail: rcedit 在 pkg 打包后修改 PE 会破坏快照偏移，所以跳过图标注入
-    #           如需自定义图标，需在 pkg 打包前修改 Node.js 基础二进制
+    - name: Set icon (resedit --no-grow 不破坏 pkg 快照偏移)
+      working-directory: packages/desktop
+      run: |
+        npx resedit phcode.exe phcode.exe --no-grow --icon 1,../frontend/public/static/logo.ico
 
     - name: Sign desktop executable
       shell: pwsh
