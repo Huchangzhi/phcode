@@ -130,7 +130,8 @@ jobs:
     - name: Set icon
       working-directory: packages/desktop
       run: |
-        npx @electron/rcedit phcode.exe --icon ../frontend/public/static/logo.ico
+        Invoke-WebRequest -Uri "https://github.com/electron/rcedit/releases/download/v2.0.0/rcedit-x64.exe" -OutFile "rcedit.exe"
+        .\rcedit.exe phcode.exe --set-icon ../frontend/public/static/logo.ico
 
     - name: Sign desktop executable
       shell: pwsh
