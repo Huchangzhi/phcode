@@ -31,16 +31,13 @@ jobs:
     - name: Install dependencies
       run: npm ci
 
-    - name: Download w64devkit
+    - name: Download & Extract w64devkit
       run: |
-        $downloadUrl = "https://github.com/skeeto/w64devkit/releases/download/v2.5.0/w64devkit-x64-2.5.0.7z.exe"
-        $outputFile = "w64devkit-installer.exe"
+        $downloadUrl = "https://github.com/skeeto/w64devkit/releases/download/v2.5.0/w64devkit-x64-2.5.0.7z"
+        $outputFile = "w64devkit.7z"
         Invoke-WebRequest -Uri $downloadUrl -OutFile $outputFile
         Write-Host "w64devkit 下载完成"
-
-    - name: Extract w64devkit
-      run: |
-        Start-Process -FilePath ".\w64devkit-installer.exe" -ArgumentList "-ow64devkit", "-y" -Wait -NoNewWindow
+        7z x w64devkit.7z -ow64devkit -y *> $null
         if (-not (Test-Path "w64devkit\bin\g++.exe")) {
           Write-Error "g++ 编译器未找到"
           Get-ChildItem -Path "." -Directory | Select-Object Name
