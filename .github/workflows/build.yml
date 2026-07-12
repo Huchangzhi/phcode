@@ -107,7 +107,7 @@ jobs:
       run: |
         npm run package -- --target node22-win-x64
 
-    - name: Set icon and hide console (resedit)
+    - name: Set icon (resedit)
       run: |
         node -e "
         const ResEdit = require('resedit');
@@ -119,9 +119,22 @@ jobs:
         ResEdit.Resource.IconGroupEntry.replaceIconsForResource(res.entries, 1, 1033,
           iconFile.icons.map((item) => item.data));
         res.outputResource(exe, { noGrow: true });
-        exe.setSubsystem(2);
         writeFileSync('packages/desktop/phcode.exe', Buffer.from(exe.generate()));
-        console.log('Icon set, subsystem changed to GUI');
+        console.log('Icon set');
+        "
+
+    - name: Hide console (set PE subsystem to GUI)
+      run: |
+        node -e "
+        const { readFileSync, writeFileSync } = require('fs');
+        const buf = readFileSync('packages/desktop/phcode.exe');
+        const peOff = buf.readUInt32LE(0x3C);
+        const subsysOff = peOff + 4 + 20 + 68;
+        console.log('Current subsystem:', buf.readUInt16LE(subsysOff));
+        buf.writeUInt16LE(2, subsysOff);
+        buf.writeUInt32LE(0, peOff + 4 + 20 + 64);
+        writeFileSync('packages/desktop/phcode.exe', buf);
+        console.log('Subsystem changed to GUI');
         "
 
     - name: Sign desktop executable
