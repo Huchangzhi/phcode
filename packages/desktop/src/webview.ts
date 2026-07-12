@@ -33,6 +33,7 @@ export function openWindow(
       minWidth,
       minHeight,
       resizable: true,
+      devtools: true,
     })
     _win.loadUrl(url)
     _win.onClose(() => process.exit(0))
