@@ -20,6 +20,13 @@ build/
 *.log
 npminstall-debug.log
 
+# 打包产物
+*.exe
+*.zip
+
+# WebView2 运行时缓存
+*.WebView2/
+
 # 系统文件
 .DS_Store
 Thumbs.db

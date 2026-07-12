@@ -1,5 +1,13 @@
 import { NativeWindow } from '@nativewindow/webview'
 import { execSync } from 'child_process'
+import { appendFileSync } from 'fs'
+import { join } from 'path'
+import { tmpdir } from 'os'
+
+const LOG = join(tmpdir(), 'phcode_wv.log')
+function log(msg: string) {
+  try { appendFileSync(LOG, `${Date.now()} ${msg}\n`) } catch {}
+}
 
 function openInBrowser(url: string) {
   const cmd =
@@ -32,9 +40,13 @@ export function openWindow(
       minHeight,
       resizable: true,
     })
+    log('window created')
     win.loadUrl(url)
-    win.onClose(() => process.exit(0))
+    log(`navigated to ${url}`)
+    win.onPageLoad((event, pageUrl) => log(`page ${event}: ${pageUrl}`))
+    win.onClose(() => log('window closed'))
   } catch (err) {
+    log(`error: ${err}`)
     console.warn('Native window failed, falling back to browser:', err)
     openInBrowser(url)
   }
