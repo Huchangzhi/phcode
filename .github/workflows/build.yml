@@ -113,7 +113,7 @@ jobs:
         const ResEdit = require('resedit');
         const { readFileSync, writeFileSync } = require('fs');
         const data = readFileSync('packages/desktop/phcode.exe');
-        const exe = ResEdit.NtExecutable.from(data);
+        const exe = ResEdit.NtExecutable.from(data, { ignoreCert: true });
         const res = ResEdit.NtExecutableResource.from(exe);
         const iconFile = ResEdit.Data.IconFile.from(readFileSync('packages/frontend/public/static/logo.ico'));
         ResEdit.Resource.IconGroupEntry.replaceIconsForResource(res.entries, 1, 1033,
