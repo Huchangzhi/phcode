@@ -102,10 +102,10 @@ jobs:
         npm -w packages/server run build
         npm -w packages/desktop run build
 
-    - name: Package desktop executable
+    - name: Package desktop executable (Enhanced SEA mode)
       working-directory: packages/desktop
       run: |
-        npm run package -- --target node22-win-x64
+        npm run package
 
     - name: Set icon (resedit)
       run: |

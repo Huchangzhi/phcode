@@ -3,27 +3,22 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "main": "dist/main.js",
-  "bin": "dist/main.js",
+  "main": "dist/bundle.js",
+  "bin": "dist/bundle.js",
   "scripts": {
     "dev": "npm -w @phoi/frontend run build && tsx watch src/main.ts",
     "build": "tsc -b",
-    "bundle": "esbuild dist/main.js --bundle --platform=node --format=esm --outfile=dist/bundle.js --external:express --external:cors --external:@nativewindow/webview",
     "start": "node dist/main.js",
-    "package": "npm run bundle && pkg dist/bundle.js --output phcode.exe --sea --public",
+    "bundle": "esbuild dist/main.js --bundle --platform=node --format=esm --outfile=dist/bundle.js --external:express --external:cors --external:@nativewindow/webview",
+    "package": "npm run bundle && pkg . --sea --target node22-win-x64 --output phcode.exe",
     "clean": "node -e \"import('fs').then(({rmSync})=>rmSync('dist',{recursive:true,force:true}))\""
   },
   "dependencies": {
     "@nativewindow/webview": "^1.0.6",
+    "@nativewindow/webview-win32-x64-msvc": "1.0.6",
     "@phoi/shared": "*",
     "cors": "^2.8.5",
     "express": "^4.19.0"
-  },
-  "pkg": {
-    "assets": [
-      "dist/**/*",
-      "node_modules/@nativewindow/**/*"
-    ]
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",
