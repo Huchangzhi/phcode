@@ -8,25 +8,31 @@
   "scripts": {
     "dev": "npm -w @phoi/frontend run build && tsx watch src/main.ts",
     "build": "tsc -b",
+    "bundle": "esbuild dist/main.js --bundle --platform=node --format=esm --outfile=dist/bundle.js --external:express --external:cors --external:@nativewindow/webview",
     "start": "node dist/main.js",
-    "package": "pkg . --output phcode.exe --sea --public",
+    "package": "npm run bundle && pkg dist/bundle.js --output phcode.exe --sea --public",
     "clean": "node -e \"import('fs').then(({rmSync})=>rmSync('dist',{recursive:true,force:true}))\""
   },
   "dependencies": {
+    "@nativewindow/webview": "^1.0.6",
     "@phoi/shared": "*",
-    "express": "^4.19.0",
-    "cors": "^2.8.5"
+    "cors": "^2.8.5",
+    "express": "^4.19.0"
   },
   "pkg": {
-    "assets": ["dist/**/*.js"]
+    "assets": [
+      "dist/**/*",
+      "node_modules/@nativewindow/**/*"
+    ]
   },
   "devDependencies": {
-    "@types/express": "^4.17.21",
     "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
     "@types/node": "^20.14.0",
-    "tsx": "^4.15.0",
     "@yao-pkg/pkg": "^6.21.0",
+    "esbuild": "^0.28.1",
     "resedit": "^2.0.0",
+    "tsx": "^4.15.0",
     "typescript": "^5.5.0"
   }
 }
